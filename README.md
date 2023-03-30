@@ -12,7 +12,8 @@ npm i @fortawesome/fontawesome-svg-core
 npm i @fortawesome/free-brands-svg-icons
 npm i @fortawesome/free-solid-svg-icons
 npm i @fortawesome/react-fontawesome
-npm i styled-components
+npm i styled-components @types/styled-components
 npm i redux react-redux next-redux-wrapper
+npm i redux-devtools-extension
 npm i prism-react-renderer
 ```
