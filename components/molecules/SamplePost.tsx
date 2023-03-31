@@ -1,6 +1,6 @@
-/*import * as S from './SamplePost.style';
+import * as S from './SamplePost.style';
 import Tags from 'components/organisms/Tags';
-import Link from 'next/Link';
+import Link from 'next/link';
 import Image from 'next/image';
 
 import { IPost } from 'types';
@@ -38,4 +38,4 @@ const SamplePost = ({ post }: IProps) => {
     );
 };
 
-export default SamplePost;*/
+export default SamplePost;
