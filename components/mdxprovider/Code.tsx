@@ -8,7 +8,7 @@ interface IProps {
     className?: string;
 }
 
-const Code = ({ children, className }: IProps) => {
+const Code = React.memo(({ children, className }: IProps) => {
     const language = className ? className.replace(/language-/, '') : '';
     if (className) {
         return (
@@ -46,6 +46,7 @@ const Code = ({ children, className }: IProps) => {
     } else {
         return <S.Method>{children}</S.Method>;
     }
-};
+});
+Code.displayName = 'Code';
 
-export default React.memo(Code);
+export default Code;

@@ -1,15 +1,17 @@
 import * as S from './SamplePost.style';
+import React from 'react';
 import Tags from 'components/organisms/Tags';
 import Link from 'next/link';
 import Image from 'next/image';
 
 import { IPost } from 'types';
+import compareProps from '../../utils/compareProps';
 
 interface IProps {
     post: IPost;
 }
 
-const SamplePost = ({ post }: IProps) => {
+const SamplePost = React.memo(({ post }: IProps) => {
     return (
         <S.Container>
             {post.data.thumbnail && (
@@ -36,6 +38,7 @@ const SamplePost = ({ post }: IProps) => {
             </S.Info>
         </S.Container>
     );
-};
+}, compareProps);
+SamplePost.displayName = 'SamplePost';
 
 export default SamplePost;

@@ -6,12 +6,12 @@ interface ImageProps {
     alt: string;
 }
 
-const ResponsiveImage = ({ src, alt }: ImageProps) => {
+const ResponsiveImage = React.memo(({ src, alt }: ImageProps) => {
     const size = (() => {
         if (!alt.includes('size:')) {
             return undefined;
         }
-        const sizeInfo = alt.split('size:')[1].split('x');
+        const sizeInfo = alt.split('size:')[1].split('*');
         return {
             width: Number(sizeInfo[0]),
             height: Number(sizeInfo[1]),
@@ -28,6 +28,7 @@ const ResponsiveImage = ({ src, alt }: ImageProps) => {
             </span>
         );
     }
-};
+});
+ResponsiveImage.displayName = 'ResponsiveImage';
 
-export default React.memo(ResponsiveImage);
+export default ResponsiveImage;

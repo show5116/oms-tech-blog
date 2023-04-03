@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import * as S from './Header.style';
 
 import Link from 'next/link';
@@ -12,7 +12,7 @@ import { RootState } from 'store';
 import { setDarkTheme, setWhiteTheme } from 'store/action/themeAction';
 import { darkTheme } from 'styles/theme';
 
-const Header = () => {
+const Header = React.memo(() => {
     const themeState = useSelector((state: RootState) => state.themeReducer);
     const dispatch = useDispatch();
     const isScrollDown = useScroll('down');
@@ -45,6 +45,7 @@ const Header = () => {
             </S.HeaderMenu>
         </S.Container>
     );
-};
+});
+Header.displayName = 'Header';
 
-export default React.memo(Header);
+export default Header;

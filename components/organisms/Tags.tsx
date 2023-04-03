@@ -1,6 +1,10 @@
+import * as S from './Tags.style';
+import React from 'react';
+
 import Tag from 'components/molecules/Tag';
 import { ITag } from 'types';
-import * as S from './Tags.style';
+
+import compareProps from '../../utils/compareProps';
 
 interface IProps {
     tags: ITag[] | string[];
@@ -9,7 +13,7 @@ interface IProps {
     currentTag?: string;
 }
 
-const Tags = ({ tags, isCategory, allLength, currentTag }: IProps) => {
+const Tags = React.memo(({ tags, isCategory, allLength, currentTag }: IProps) => {
     if (isCategory) {
         return (
             <S.FixedTagsContainer>
@@ -24,6 +28,7 @@ const Tags = ({ tags, isCategory, allLength, currentTag }: IProps) => {
             ))}
         </S.TagsContainer>
     );
-};
+}, compareProps);
+Tags.displayName = 'Tags';
 
 export default Tags;

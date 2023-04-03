@@ -1,10 +1,12 @@
 import * as S from './PostTemplate.style';
+import React from 'react';
 
 import Tags from 'components/organisms/Tags';
 import { MDXRemote, MDXRemoteSerializeResult } from 'next-mdx-remote';
 
 import { IFrontMatter } from 'types';
 import Image from 'next/image';
+import compareProps from '../../utils/compareProps';
 
 interface IProps {
     mdxSource: MDXRemoteSerializeResult;
@@ -12,7 +14,7 @@ interface IProps {
     content: string;
 }
 
-const PostTemplate = ({ mdxSource, frontMatter, content }: IProps) => {
+const PostTemplate = React.memo(({ mdxSource, frontMatter, content }: IProps) => {
     const { title, date, authorId, authorName, tags, thumbnail } = frontMatter;
 
     return (
@@ -32,6 +34,7 @@ const PostTemplate = ({ mdxSource, frontMatter, content }: IProps) => {
             </S.PostContainer>
         </S.Container>
     );
-};
+}, compareProps);
+PostTemplate.displayName = 'PostTemplate';
 
 export default PostTemplate;

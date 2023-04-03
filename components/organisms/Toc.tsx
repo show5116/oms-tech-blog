@@ -1,3 +1,4 @@
+import React from 'react';
 import useTocObserve from 'hooks/useTocObserve';
 import { useState } from 'react';
 import * as S from './Toc.style';
@@ -11,7 +12,7 @@ interface IProps {
     content: string;
 }
 
-const Toc = ({ content }: IProps) => {
+const Toc = React.memo(({ content }: IProps) => {
     const [activeId, setActiveId] = useState('');
     const titles = content.split('\n').filter((t) => t.startsWith('#') && !t.includes('include'));
     const result = titles.map((item) => {
@@ -46,6 +47,7 @@ const Toc = ({ content }: IProps) => {
             </ul>
         </S.Container>
     );
-};
+});
+Toc.displayName = 'Toc';
 
 export default Toc;

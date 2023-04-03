@@ -13,6 +13,7 @@ const Strong = ({ children }: IProps) => {
             return (
                 <S.Caution>
                     <S.CautionIcon>❗</S.CautionIcon>
+                    {newString}
                 </S.Caution>
             );
         } else if (children.startsWith('팁')) {

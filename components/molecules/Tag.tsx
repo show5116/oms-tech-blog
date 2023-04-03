@@ -1,15 +1,17 @@
 import * as S from './Tag.style';
+import React from 'react';
 
 import { useRouter } from 'next/router';
 
 import { ITag } from 'types';
+import compareProps from '../../utils/compareProps';
 
 interface IProps {
     tag: ITag | string;
     isCurrent?: boolean;
 }
 
-const Tag = ({ tag, isCurrent = false }: IProps) => {
+const Tag = React.memo(({ tag, isCurrent = false }: IProps) => {
     const router = useRouter();
 
     const onClickTag = () => {
@@ -44,6 +46,7 @@ const Tag = ({ tag, isCurrent = false }: IProps) => {
             {renderTagContent()}
         </S.Container>
     );
-};
+}, compareProps);
+Tag.displayName = 'Tag';
 
 export default Tag;
