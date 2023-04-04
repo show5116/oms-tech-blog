@@ -15,5 +15,6 @@ npm i @fortawesome/react-fontawesome
 npm i styled-components @types/styled-components
 npm i redux react-redux next-redux-wrapper
 npm i redux-devtools-extension
+npm i @reduxjs/toolkit
 npm i prism-react-renderer
 ```
