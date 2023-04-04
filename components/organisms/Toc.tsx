@@ -14,6 +14,7 @@ interface IProps {
 
 const Toc = React.memo(({ content }: IProps) => {
     const [activeId, setActiveId] = useState('');
+    useTocObserve(setActiveId, content);
     const titles = content.split('\n').filter((t) => t.startsWith('#') && !t.includes('include'));
     const result = titles.map((item) => {
         const depth = item.match(/#/g)?.length;
