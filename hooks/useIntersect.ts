@@ -26,6 +26,7 @@ const useIntersect = (onIntersect, option) => {
             });
             observer.observe(ref);
         }
+        return () => observer && observer.disconnect();
     }, [ref, option, checkIntersect]);
 
     return [ref, setRef];

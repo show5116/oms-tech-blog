@@ -20,7 +20,7 @@ export const CodeInfoBar = styled.div`
         font-size: 1rem;
         text-transform: uppercase;
         color: #ff8a64;
-        font-family: 'Source Code Pro', Roboto, GmarkeySans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen,
+        font-family: 'Source Code Pro', Roboto, GmarketSans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen,
             Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'sans-serif';
     }
     div:last-child {
@@ -47,6 +47,14 @@ export const TableWrapper = styled.div`
     padding: 1rem 0.5rem;
     &::-webkit-scrollbar {
         height: 1.5rem;
+    }
+    &::-webkit-scrollbar-thumb {
+        background-color: #2f3542;
+        border-radius: 1rem;
+    }
+    &::-webkit-scrollbar-track {
+        background-color: gray;
+        border-radius: 1rem;
     }
 `;
 

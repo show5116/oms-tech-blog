@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { element } from 'prop-types';
 
 interface IObserverRef {
     [key: string]: IntersectionObserverEntry;
@@ -43,6 +44,7 @@ const useTocObserve = (setActiveId: React.Dispatch<React.SetStateAction<string>>
 
         const observer = new IntersectionObserver(observerCallback, observerOption);
         const headingElements = Array.from(document.querySelectorAll('h2, h3, h4'));
+        headingElements.forEach((element) => observer.observe(element));
         return () => observer.disconnect();
     }, [content]);
 };

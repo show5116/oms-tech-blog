@@ -18,6 +18,10 @@ const Tags = React.memo(({ tags, isCategory, allLength, currentTag }: IProps) =>
         return (
             <S.FixedTagsContainer>
                 <Tag tag={{ name: 'All', cnt: allLength }} isCurrent={currentTag === 'All' || currentTag === ''} />
+                {tags.map(
+                    (tag) =>
+                        typeof tag !== 'string' && <Tag key={tag.name} tag={tag} isCurrent={currentTag === tag.name} />
+                )}
             </S.FixedTagsContainer>
         );
     }
