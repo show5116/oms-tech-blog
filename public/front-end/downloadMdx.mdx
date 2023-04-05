@@ -1,0 +1,407 @@
+---
+title: 'MarkDown 작성법'
+date: '2023-04-03'
+description: 'OMS-Tech-Blog에서 mdx 파일 작성법에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['md']
+thumbnail: '/front-end/markdown.png'
+---
+
+MarkDown파일은 사용법이 쉽고, 빠르게 문서를 정리할 수 있는 장점이 있습니다.<br/>
+확장자는 **.md**로 HTML 마크업을 대신하여서 표현되고 있습니다.<br/>
+각 프로젝트의 **README.md** 처럼 글씨와 간단한 이미지로 표현하는 문서입니다.<br/>
+현 프로젝트의 모든 글들은 mdx파일들로 이루어져 있습니다.
+
+## .mdx
+
+mdx파일은 .md파일과 동일한 문법으로 작성이 되는데,<br/>
+거기에 더불어 리엑트 컴포넌트와 함께 사용이 가능한 확장자입니다.<br/>
+따라서 현재 OMS-Tech-Blog는 MDX Remote를 이용해 .mdx파일을 해석하고,<br/>
+이를 하나의 블로그 글처럼 만들어주는 역할을 하고 있습니다.
+
+## 마크다운 문법
+
+마크다운의 문법은 기본적인것은 비슷하나,<br/>
+적용되는 컨텐츠에 따라 약간씩 다르게 적용될 수 있습니다.<br/>
+ex) github, bitbucket등의 사이트에서 README.md도 서로 다르게 적용됩니다.
+
+### frontmatter
+
+frontmatter는 파일 시작 시 파일에 대해 작성하는 구역입니다.<br/>
+파일에 맨 위에 파일에 대한 정보를 작성해 주면 됩니다.
+
+```md
+---
+title: 'MarkDown 작성법'
+date: '2023-04-03'
+description: 'OMS-Tech-Blog에서 mdx 파일 작성법에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['md']
+thumbnail: '/front-end/markdown.png'
+---
+```
+
+### 제목
+
+`<h1>` 태그부터 `<h6>` 태그 까지 제목을 표현할 수 있습니다.
+
+```md
+	제목 작성법
+	# 제목 1
+	## 제목 2
+	### 제목 3
+	#### 제목 4
+	##### 제목 5
+	###### 제목 6
+```
+
+### 강조
+
+```md
+이텔릭체는 *별표(asterisks)*를 사용하세요.
+강조는 **별표(asterisks)** 또는 `백틱(backtick)`을 사용하세요.
+<del>취소선은</del> `<del></del>`를 사용하세요.
+<u>밑줄</u>은 `<u></u>`를 사용하세요.
+```
+
+이텔릭체는 *별표(asterisks)*를 사용하세요.
+강조는 **별표(asterisks)** 또는 `백틱(backtick)`을 사용하세요.
+<del>취소선은</del> `<del></del>`를 사용하세요.
+<u>밑줄</u>은 `<u></u>`를 사용하세요.
+
+### 목록
+
+`<ol>`, `<ul>` 목록 태그로 변환됩니다.
+
+```md
+1. 순서가 필요한 목록
+
+2. 순서가 필요한 목록
+    - 순서가 필요하지 않은 목록(서브)
+    - 순서가 필요하지 않은 목록(서브)
+
+3. 순서가 필요한 목록
+    1. 순서가 필요한 목록(서브)
+    2. 순서가 필요한 목록(서브)
+
+4. 순서가 필요한 목록
+
+- 순서가 필요하지 않은 목록에 사용 가능한 기호
+    - 대쉬(hyphen)
+    * 별표(asterisks)
+    + 더하기(plus sign)
+```
+
+1. 순서가 필요한 목록
+
+2. 순서가 필요한 목록
+ - 순서가 필요하지 않은 목록(서브)
+ - 순서가 필요하지 않은 목록(서브)
+
+3. 순서가 필요한 목록
+ 1. 순서가 필요한 목록(서브)
+ 2. 순서가 필요한 목록(서브)
+
+4. 순서가 필요한 목록
+
+- 순서가 필요하지 않은 목록에 사용 가능한 기호
+- 대쉬(hyphen)
+* 별표(asterisks)
++ 더하기(plus sign)
+
+### 링크
+
+외부 링크는 `<a>`태그로 변환되고,<br/>
+내부 링크는 Next.Link로 변환됩니다.
+
+```md
+[GOOGLE](https://google.com)
+
+[NAVER](https://naver.com "링크 설명(title)을 작성하세요.")
+
+[상대적 참조](/about)
+
+[제목](#제목)
+```
+
+[GOOGLE](https://google.com)
+
+[NAVER](https://naver.com "링크 설명(title)을 작성하세요.")
+
+[상대적 참조](/about)
+
+[제목](#제목)
+
+### 이미지
+
+외부 링크는 `<img>`태그로 변환되고,<br/>
+이미지 파일은 Next.Image로 변환됩니다.
+
+```md
+![대체텍스트를 작성해주세요.](http://www.gstatic.com/webp/gallery/1.jpg)
+![대체텍스트란에 사이즈 지정이 가능합니다. size:800*600](http://www.gstatic.com/webp/gallery/1.jpg "링크 설명(title)을 작성하세요.")
+![프로젝트내 이미지 파일은 사이즈 지정을 하지 않으면 고정된 크기로 나옵니다.](/front-end/dog.png)
+![사이즈 지정을 해주세요 size:500*300](/front-end/dog.png)
+```
+
+![대체텍스트를 작성해주세요.](http://www.gstatic.com/webp/gallery/1.jpg)
+![대체텍스트란에 사이즈 지정이 가능합니다. size:800*600](http://www.gstatic.com/webp/gallery/1.jpg "링크 설명(title)을 작성하세요.")
+![프로젝트내 이미지 파일은 사이즈 지정을 하지 않으면 고정된 크기로 나옵니다.](/front-end/dog.png)
+![사이즈 지정을 해주세요 size:500*300](/front-end/dog.png)
+
+### 이미지에 링크
+
+이미지안에 링크를 사용할 수 있습니다.
+
+```md
+[![Google size:330*130](/front-end/google.png)](https://www.google.com/)
+```
+
+[![Google size:330*130](/front-end/google.png)](https://www.google.com/)
+
+### 코드블록
+
+코드 종류에 따라 블록을 작성할 수 있습니다.<br/>
+백틱 3번과 그 옆에 언어 종류를 적어주시면 됩니다.<br/>
+**주의 remoteMdx 라이브러리가 `java`를 지원하지 않아 하이라이터 적용이 안됩니다.**
+
+````md
+```java
+String a = "aa";
+```
+
+```sql
+SELECT a.* FROM user a;
+```
+
+```yml
+spring:
+	post: 8081
+```
+
+```html
+<h2>안녕하세요</h2>
+```
+
+```css
+a {
+	background: black;
+}
+```
+
+```ts
+const a: string = 'aa';
+```
+
+```tsx
+<Link>
+	{Array(5)
+	.fill(null)
+	.map((item, index) => (
+		<p>{index}번째 입니다.</p>
+))}
+</Link>
+```
+
+```bash
+yarn start
+git pull origin master
+```
+
+```groovy
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+}
+```
+````
+
+```java
+String a = "aa";
+```
+
+```sql
+SELECT a.* FROM user a;
+```
+
+```yml
+spring:
+	post: 8081
+```
+
+```html
+<h2>안녕하세요</h2>
+```
+
+```css
+a {
+	background: black;
+}
+```
+
+```ts
+const a: string = 'aa';
+```
+
+```tsx
+<Link>
+	{Array(5)
+	.fill(null)
+	.map((item, index) => (
+		<p>{index}번째 입니다.</p>
+))}
+</Link>
+```
+
+```bash
+yarn start
+git pull origin master
+```
+
+```groovy
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+}
+```
+
+### 인용문
+
+`<blockquote>` 태그로 변환됩니다.
+
+```md
+인용문(blockQuote)
+
+> 남의 말이나 글에서 직접 또는 간접으로 따온 문장.<br/>
+> _(네이버 국어 사전)_
+
+break!
+
+> 인용문을 작성하세요!
+>> 중첩된 인용문(nested blockquote)을 만들 수 있습니다.
+>>> 중중첩된 인용문 1<br/>
+>>> 중중첩된 인용문 2<br/>
+>>> 중중첩된 인용문 3<br/>
+```
+
+인용문(blockQuote)
+
+> 남의 말이나 글에서 직접 또는 간접으로 따온 문장.<br/>
+> _(네이버 국어 사전)_
+
+break!
+
+> 인용문을 작성하세요!
+> 중첩된 인용문(nested blockquote)을 만들 수 있습니다.
+> 중중첩된 인용문 1<br/>
+>>> 중중첩된 인용문 2<br/>
+>>> 중중첩된 인용문 3<br/>
+
+### 수평선
+
+`<hr>`태그로 변환됩니다.
+
+```md
+---
+(Hyphens)
+
+***
+(Asterisks)
+
+___
+(Underscores)
+```
+
+---
+(Hyphens)
+
+***
+(Asterisks)
+
+___
+(Underscores)
+
+### 줄바꿈
+
+`<br/>`태그를 사용하거나, 띄어쓰기 2번을 이용해 줄바꿈을 할 수 있습니다.
+
+```md
+동해물과 백두산이 마르고 닳도록
+하느님이 보우하사 우리나라 만세  <!--띄어쓰기 2번-->
+무궁화 삼천리 화려 강산<br/>
+대한 사람 대한으로 길이 보전하세
+```
+
+동해물과 백두산이 마르고 닳도록
+하느님이 보우하사 우리나라 만세
+무궁화 삼천리 화려 강산<br/>
+대한 사람 대한으로 길이 보전하세
+
+### JSX 태그
+
+JSX 태그를 그대로 사용할 수 있습니다.
+
+```md
+<p>
+	<span style={{ color: 'red' }}>빨간색</span><br/>
+	<a href='/front-end/downloadMdx.mdx' download>예시 다운로드</a>
+	<div
+		style={{
+			width: 0,
+			height: 0,
+			borderBottom '50px solid transparent',
+			borderTop: '50px solid transparent',
+			borderLeft: '50px solid skyblue',
+			borderRight: '50px solid transparent',
+		}}
+	></div>
+</p>
+```
+
+<p>
+    <span style={{ color: 'red' }}>빨간색</span><br/>
+    <a href='/front-end/downloadMdx.mdx' download>예시 다운로드</a>
+    <div
+        style={{
+            width: 0,
+            height: 0,
+            borderBottom: '50px solid transparent',
+            borderTop: '50px solid transparent',
+            borderLeft: '50px solid skyblue',
+            borderRight: '50px solid transparent',
+        }}
+    ></div>
+</p>
+
+### 요약
+
+펼쳐졌다 닫히는 details 태그를 사용할 수 있습니다.
+
+```md
+<details>
+	<summary>요약입니다.</summary>
+	<p>Elit voluptate labore eiusmod aliqua in excepteur ea in.</p>
+</details>
+```
+
+<details>
+    <summary>요약입니다.</summary>
+    <p>Elit voluptate labore eiusmod aliqua in excepteur ea in.</p>
+</details>
+
+### 커스텀 기능
+
+```md
+**주의 주의사항 입니다.**<br/>
+강조구문에 주의 라는 글자로 시작하면 주의 구문이 생성됩니다.
+```
+
+**주의 주의사항 입니다.**<br/>
+강조구문에 주의 라는 글자로 시작하면 주의 구문이 생성됩니다.
+
+## IDE 활용
+
+.md 파일의 경우에는 **Intellij**와 **VS Code**에서 자동완성, 미리보기를 지원합니다.<br/>
+이를 활용해 작성하게 되면 좀더 편리하게 가능합니다.
