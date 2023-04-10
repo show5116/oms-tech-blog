@@ -1,0 +1,166 @@
+---
+title: 'React Component 분석하기'
+date: '2023-04-08'
+description: 'React의 Component를 분석하여 공통 코드를 이해할 수 있도록 하는 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['React','Component']
+---
+
+## Component란?
+
+[공식문서](https://ko.reactjs.org/docs/components-and-props.html)<br/>
+컴포넌트는 React에서 화면을 이루는 하나의 조각입니다.<br/>
+React를 사용할 때는 컴포넌트를 class형 또는 function형으로 정의할 수 있습니다.<br/>
+class형 컴포넌트의 경우에는 라이프 사이클 기능을 사용할 수 있고, 임의 메서드를 정의할 수 있습니다.<br/>
+function형 컴포넌트는 사용하기 간편하고, 라이프 사이클 대신에 hooks를 사용할 수 있습니다.<br/>
+또한 빌드 성능이 class형보다 약간 더 좋습니다.<br/>
+최신 React는 계속해서 최적화 hook과 편리성 hook을 개발하면서 function형을 공식으로 권장하고 있으나,<br/>
+코드 짜는 방식이 다르고 성능차이가 크지 않아서<br/>
+OMS에서는 몇몇 컴포넌트들만 function형으로 사용되고 있고, 대부분의 컴포넌트가 class형으로 사용되고 있습니다.
+
+## class형 Component의 구성
+
+class형 컴포넌트는 아래와 같은 구성으로 이루어져있습니다.
+
+```tsx
+// Counter.tsx 파일
+/* import 선언부
+   라이브러리 모듈이나, 다른 컴포넌트들을 import해주는 부분입니다. */
+import React from 'react';
+
+/* type 선언부
+   typeScript에서 지원해주는 기능으로, 사용할 변수 명과 타입을 선언해주어서,
+   컴포넌트의 가독성을 올려주고, 자동완성 및 컴파일 에러를 지원해줍니다. /*
+interface OwnProps {
+	// 변수명 뒤에 ?를 붙히면 | undefined가 됩니다.
+	// 즉 initialCounter: number | undefined와 같아집니다.
+	initialCounter?: number;
+	useName: boolean;
+	name?: string;
+}
+
+interface OwnState {
+	counter: number;
+}
+
+type aa = 'aa' | 'bb';
+
+/* 클래스형 컴포넌트를 정의합니다.
+   컴포넌트명은 관례로 첫 문자는 대문자로 사용합니다. */
+class 컴포넌트명 extends React.Component<OwnProps, OwnState> {
+	/* 변수 선언부
+	   컴포넌트에서 사용할 변수를 선언해줍니다.(state, props 제외)
+	   여기 사용되는 변수들은 반드시 리렌더 시마다 화면에 적용되니
+	   변수들을 사용할 때 표현방법을 고민해야 합니다. */
+	private flag: boolean = false;
+
+	// 라이프 사이클 선언부
+	constructor(props: OwnProps) {
+		super(props);
+		// 변수 및 state초기화
+		this.state = {
+			counter: 0,
+		};
+	}
+
+	componentDidMount() {
+		if (initialCounter !== undefined) {
+			this.setState({ counter: initialCounter });
+		}
+	}
+
+	// 렌더 영역으로 실제 화면에 보이게 되는 부분입니다. JSX 문법으로 작성합니다.
+	render() {
+		return (
+			<div>
+				{/*JSX 문법에서 조건부로 렌더링 할 수 있습니다.*/}
+				{useName && <h1>안녕하세요 {name}입니다.<h1/>}
+				<input type="text" value={this.state.counter} />
+				<button onClick={this.onClickUp}>Up</button>
+				<button onClick={this.onClickDown}>Down</button>
+			</div>
+		);
+	}
+
+	/* 사용자 함수 선언부, 컴포넌트에서 사용할 함수들을 선언해서 사용할 수 있습니다.
+	   private을 붙히지 않으면 외부 컴포넌트에서 ref를 통해 DOM으로 직접 접근할 수 있습니다. /*
+	setValue = (value: number) => {
+		this.setState({ counter: value });
+	};
+
+	getValue = () => this.state.counter;
+
+	private onClickUp = () => {
+		this.setState({ counter: this.state.counter + 1 });
+	};
+
+	private onClickDown = () => {
+		this.setState({ counter: this.state.counter - 1 });
+	};
+}
+
+export default 컴포넌트명;
+```
+
+## state, props
+
+컴포넌트에서 가장 중요한 개념인 state와 props입니다.<br/>
+React는 기본적으로 state나, props가 변경될 때 화면을 re-render합니다.<br/>
+
+-	props
+
+	props는 상위 컴포넌트에서 하위 컴포넌트로 데이터를 전달할 때 사용합니다.
+
+	```tsx
+	<Counter initialCounter={10} useName={true} name="홍길동" />
+	```
+
+-	state
+
+	state는 컴포넌트 내에서 동적으로 상태를 관리해주는 값입니다.<br/>
+	constructor에서 state를 선언 해주고, 이후에 어떠한 이벤트가 있을 때 이 state값을 변경해줍니다.<br/>
+	state값을 변경할때는 setState()메서드를 사용해주어야 하는데, 이 때 state가 바뀌는 것은 **비동기**로 실행됩니다.<br/>
+	따라서 상태가 변경된 이후에 어떤 작업을 하고 싶으면 콜백함수를 사용할 수 있습니다.
+
+	```tsx
+	this.setState({ counter: 10 }, () => console.log('만세'));
+	```
+
+## Life Cycle
+
+class형 컴포넌트는 Life Cycle을 가지는데, 이를 활용하여 컴포넌트가 렌더될 때,<br/>
+업데이트 될 때, 혹은 컴포넌트가 사라질 때 등의 상황에서 특정한 코드를 실행시키거나 혹은 디버깅할 수 있습니다.<br/>
+[Life Cycle 포스트](/post/front-end/life-cycle)
+
+## 공통 Component 사용법 알아보기
+
+컴포넌트의 내부 로직을 이해하지 않더라도, 컴포넌트의 사요앙법을 어느정도는 알 수 있게 됩니다.<br/>
+interface로 선언된 props의 변수명과 타입을 확인하고 이에 따른 동작을 확인하면서 사용할 수 있습니다.<br/>
+추후 포스팅을 통해 컴포넌트 별로 분석해보도록 하겠습니다.
+
+## 성능 올리기
+
+-	리렌더링
+
+	React는 3가지 경우에 컴포넌트에 리렌더링이 일어납니다.<br/>
+	state가 변경되거나, props가 변경되거나, 혹은 forceUpdate() 메서드를 호출하였을 때 입니다.<br/>
+	**리엑트는 부모 컴포넌트가 리렌더 되면 자식 컴포넌트도 전부 리렌더가 일어납니다.**<br/>
+	즉 리렌더가 자주 일어나게 되면 성능이 저하되고, 이를 `souldComponentUpdate`를 통해 최적화가 가능합니다.<br/>
+	최적화가 가능해도 애초에 불필요한 리렌더를 일으키지 않는것이 최선이고,<br/>
+	적절한 리렌더는 UI를 설계할 때 필요하지만, 무분별한 리렌더는 성능 저하를 유발합니다.
+
+-	state vs ref
+
+    [공식문서](https://ko.reactjs.org/docs/forwarding-refs.html)<br/>
+    createRef()는 상위 컴포넌트에서 리렌더링 시키는 것이 아닌, DOM에 직접적으로 접근하여서 하위 컴포넌트에서 리렌더를 일으켜 변경하거나 조작합니다.<br/>
+    하위 컴포넌트에서만 리렌더를 일으켜서, 리렌더의 범위를 최소화 시킴으로서 성능을 끌어올릴 수 있습니다.<br/>
+    하지만 무분별한 사용은 오히려 렌더의 범위는 줄이지만 렌더의 횟수를 늘려 성능이 저하될 수 도 있습니다.<br/>
+    공통 Component나 라이브러리에서 적절하게 사용하면 좋습니다.
+
+-	shouldComponentUpdate
+
+	[공식문서](https://ko.reactjs.org/docs/optimizing-performance.html#shouldcomponentupdate-in-action)<br/>
+	라이프사이클인 shouldComponentUpdate는 false를 반환할경우 리렌더를 시도하지 않고,<br/>
+	심지어 true를 반환하는 경우에도 이전에 렌더링 된 React 엘리먼트와 동일 한 경우에는 DOM을 update하지 않아서<br/>
+	React의 렌더링 성능을 끌어올릴 수 있습니다.
