@@ -1,0 +1,74 @@
+---
+title: 'Service Discovery'
+date: '2023-04-11'
+description: 'Spring Cloud MSA 환경에서 서비스들을 감독해주는 서비스에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['MSA', 'SpringCloud']
+---
+
+Service Discovery란 외부에서 마이크로 서비스들을 검색하기 위한 기능을 지원해줍니다.<br/>
+ket, value 값으로 각 서비스가 어디에 존재하는지 저장하고, 검색을 해줍니다.
+
+## Netflix Eureka
+
+Eureka는 Gateway로 부터 요청정보를 받게되면 알맞는 서비스에 요청을 보내주는 역할을 합니다.<br/>
+뿐만 아니라 Load Balancer를 지원해주거나 서비스 인스턴스 상태를 확인할 수 있습니다.
+
+## 적용법
+
+Spring Boot 프로젝트에서는 아래 방법대로 적용할 수 있습니다.
+
+### dependencies
+
+gradle 혹은 maven에서 netflix-eureka-server를 추가해줍니다.<br/>
+gradle 기준으로는 아래와 같습니다.
+
+```groovy
+dependencies {
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-server'
+}
+```
+
+### @EnableEurekaServer
+
+SpringBoot의 메인 메서드가 존재하는 서비스 어플리케이션에 어노테이션을 추가해줍니다.
+
+```java
+@SpringBootApplication
+@EnableEurekaServer
+public class DiscoveryServiceApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(DiscoveryServiceApplication.class, args);
+	}
+
+}
+```
+
+### 설정 파일 추가
+
+```yml
+spring:
+	application:
+		name: cloud-discovery
+
+eureka:
+	client:
+		register-with-eureka: false
+		fetch-registry: false
+```
+
+spring.application.name 속성은 서비스의 이름 (Key값)을 지정해줍니다.<br/>
+eureka.client.register-with-eureka속성은 eureka 서버에 등록 여부를 결정해주는데,<br/>
+Discovery 서비스는 해당 서비스 자체가 eureka 서버가 되야하기 때문에 false로 해줍니다.
+
+## 적용 확인
+
+![EurekaInstance size:1000*200](/back-end/eurekaInstance.png)
+
+-	Instances currently registered with Eureka
+
+	현재 Eureka Server에 등록되어 있는 Service목록들을 확인 할 수 있습니다.<br/>
+	Application은 yml의 spring.application.name으로 설정한 Key 값이며,<br/>
+	Availability Zones는 가용성 영역으로 한 서비스 내의 인스턴스 갯수를 나타내줍니다.<br/>
+	Status는 UP은 서버가 문제없이 가동되는 것, DOWN은 서버가 가동되지 않음을 뜻합니다.
