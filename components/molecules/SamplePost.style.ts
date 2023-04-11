@@ -5,7 +5,10 @@ export const Container = styled.article`
     width: 800px;
     border-bottom: 1px solid ${color.gray};
     padding-bottom: 1rem;
-    margin-botton: 2rem;
+    margin-bottom: 2rem;
+    img {
+        margin-bottom: 10px;
+    }
 `;
 
 export const Title = styled.h2`

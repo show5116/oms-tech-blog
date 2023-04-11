@@ -16,15 +16,11 @@ const SamplePost = React.memo(({ post }: IProps) => {
         <S.Container>
             {post.data.thumbnail && (
                 <Link href={`/post/${post.slug.join('/')}`}>
-                    <a>
-                        <Image src={post.data.thumbnail} alt={post.data.title} width={800} height={400} />
-                    </a>
+                    <Image src={post.data.thumbnail} alt={post.data.title} width={800} height={400} />
                 </Link>
             )}
             <Link href={`/post/${post.slug.join('/')}`}>
-                <a>
-                    <S.Title>{post.data.title}</S.Title>
-                </a>
+                <S.Title>{post.data.title}</S.Title>
             </Link>
             <S.Description>{post.data.description}</S.Description>
             <Tags isCategory={false} tags={post.data.tags} />
@@ -34,7 +30,6 @@ const SamplePost = React.memo(({ post }: IProps) => {
                 <span>{post.data.authorName}</span>
                 <S.Separator>.</S.Separator>
                 <span>{post.data.authorId}</span>
-                <S.Separator>.</S.Separator>
             </S.Info>
         </S.Container>
     );

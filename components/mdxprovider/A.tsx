@@ -20,17 +20,9 @@ const A = ({ children, href, download }: IProps) => {
     };
 
     if (href.startsWith('/') && !download) {
-        return (
-            <Link href={href}>
-                <a>{renderChildren()}</a>
-            </Link>
-        );
+        return <Link href={href}>{renderChildren()}</Link>;
     } else if (href.startsWith('#')) {
-        return (
-            <Link href={location.pathname + convertTextToId(href)}>
-                <a>{renderChildren()}</a>
-            </Link>
-        );
+        return <Link href={location.pathname + convertTextToId(href)}>{renderChildren()}</Link>;
     } else if (download) {
         return (
             <a href={href} download={download}>
