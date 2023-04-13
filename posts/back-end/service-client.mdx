@@ -1,0 +1,97 @@
+---
+title: 'ServiceClient'
+date: '2023-04-13'
+description: 'Spring Cloud MSA 환경에서 Service들을 등록하는 방법에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['MSA','SpringCloud']
+---
+
+지난 포스트에서는 Eureka Server로 동작할 Service Discovery를 만들었습니다.<br/>
+[ServiceDiscovery 포스트](/post/back-end/service-discovery)<br/>
+Eureka Server에 각 Service들을 Client로 등록해서 Server가 파악할 수 있게 해야합니다.
+
+## 등록방법
+
+Eureka Server에 각 Service들을 Client로 등록해서 Server가 파악할 수 있게 해야합니다.
+
+### Dependencies
+
+```groovy
+// build.gradle
+dependencies {
+	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+}
+```
+
+### Annotation
+
+Service Client로 등록하는 어노테이션은 총 2개가 있습니다.<br/>
+
+-	@EnableDiscoveryClient
+
+	이 어노테이션은 Eureka뿐 아니라 consul, zookeeper들이 같이 속해있습니다.<br/>
+	해당 기능들도 같이 구현하여 사용하고 싶을 때 이 어노테이션을 사용합니다.
+
+-	@EnableEurekaClient
+
+	이 어노테이션은 오로지 Eureka Client로 등록해주기만 합니다.
+
+두 어노테이션중 하나를 선택하여서, 메인클래스에 붙이면 됩니다.
+
+```java
+@SpringBootApplication
+@EnableEurekaClient
+public class TestApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(TestApplication.class, args);
+	}
+}
+```
+
+### 설정 파일 추가
+
+```yml
+eureka:
+	client:
+		serviceUrl:
+			defaultZone: http://www.exam.com:8085/eureka/
+		registerWithEureka: true
+		fetchRegistry: true
+```
+
+Eureka Server의 URL을 eureka.client.serviceUrl.defaultZone 설정값에 넣어줘야 합니다.<br/>
+그리곤 Eureka Server 서비스와는 반대로, Client임을 알리기 위해<br/>
+eureka.client.registerWithEureka,<br/>
+eureka.client.fetchRegistry 이 두개의 값을 true로 설정합니다.
+
+```yml
+spring:
+	application:
+		name: client-name
+```
+
+spring.application.name의 이름으로 Eureka Server에 등록됩니다.
+
+## Eureka 등록의 원리 (HTTP Method로 등록 및 삭제)
+
+Eureka Server는 HTTP Method를 받아서 등록, 갱신, 및 삭제를 진행합니다.
+
+-	등록
+
+	appID로 Client에 등록합니다.<br/>
+	**POST /eureka/apps/[appID]**
+
+-	갱신
+
+	appID의 instanceID 갱신을 받습니다.<br/>
+	**PUT /eureka/apps/[appID]/[instanceID]**
+
+-	삭제
+
+	appID의 instanceID를 삭제합니다.<br/>
+	**DELETE /eureka/apps/[appID]/[instanceID]**
+
+위의 등록 방법에서 어노테이션을 적용하면 위 3가지 작업을 자동으로 진행합니다.<br/>
+갱신 요청이 일정 시간동안 없다면 해당 서비스를 죽은것으로 간주합니다.
+
