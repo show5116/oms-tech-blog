@@ -1,0 +1,244 @@
+---
+title: 'RESTful API'
+date: '2023-04-24'
+description: 'RESTful에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['API', 'Spring']
+---
+
+[Representational State Transfer API](https://aws.amazon.com/ko/what-is/restful-api/)는 리소스를 이름으로 구분하여 해당 상태를 주고 받는것을 의미합니다.<br/>
+간단하게는 API의 URI를 만드는 규칙입니다.
+
+## 사용 이유
+
+1.	서버와 클라이언트의 구분
+
+	백엔드랑 프론트엔드를 구분하여서 서로의 의존성을 떨어뜨립니다.
+
+2.	무상태(Stateless)
+
+	세션과 쿠키를 다루지 않으면서 서버는 요청만 단순 처리하게 되고, 서비스의 자유도가 높아집니다.
+
+3.	캐시(Cacheable)
+
+	HTTP 프로토콜의 캐싱 기능 적용 가능
+
+4.	협업 규칙
+
+	개발자들이 동일한 방식으로 API를 개발하여 서비스의 통일감을 주고,<br/>
+	코드 분석을 빠르게 합니다.
+
+## REST 구성 요소
+
+1.	자원(Resource): URI
+
+2.	행위(Verb): HTTP Method
+
+	HTTP 프로토콜의 [Method](#http-method)들을 사용합니다.
+
+3.	표현(Representation of Resource)
+
+	JSON, XML등 형태로 나타내어 지고, Spring에서는 ResponseEntity를 활용합니다.
+
+## HTTP Method
+
+메서드는 총 8가지가 있습니다.
+
+1.	GET: 서버로 부터 데이터를 취득
+
+2.	POST: 서버에 데이터를 추가, 작성 등
+
+3.	PUT: 서버의 데이터를 갱신, 작성 등
+
+4.	PATCH: 리소스의 일부분을 수정
+
+5.	DELETE: 서버의 데이터를 삭제
+
+6.	HEAD: 서버 리소스의 헤더(메타 데이터의 취득)
+
+7.	OPTIONS: 리소스가 지원하고 있는 메소드의 취득
+
+8.	CONNECT: 프록시 동작의 터널 접속을 변경
+
+## Response Status (상태 코드)
+
+HTTP STATUS CODE 라고 불리고, Response에 상태코드가 담겨서 클라이언트에게 응답합니다.<br/>
+
+-	2XX(성공)
+
+	-	200 OK
+
+		요청이 성공했음을 의미합니다.<br/>
+		**ResponseEntity.ok(dto);**
+
+	-	201 Created
+
+		POST나 PUT요청 이후에 리소스가 생성되었음을 나타냅니다.<br/>
+		**ResponseEntity.created(URI.create("/")).build();**
+
+	-	204 No Content
+
+		요청에 대해 보낼 컨텐츠가 없을 때 사용합니다.<br/>
+		**ResponseEntity.noContent().build();**
+
+-	4XX(클라이언트 오류)
+
+	-	400 Bad Request
+
+		잘못된 문법으로 서버가 요청을 이해하지 못할 경우입니다.
+
+	-	401 Unauthorized
+
+		요청이 인증받지 못했음을 나타냅니다.
+
+	*	403 Forbidden
+
+		요청에 권한이 없을 때를 나타냅니다.
+
+	-	404 Not Found
+
+		일반적으론 알려지지 않은 URL을 나타냅니다.<br/>
+		때에 따라선 결과 리소스가 없을 경우에도 404를 사용합니다.<br/>
+		**ResponseEntity.notFound().build();**
+
+-	5XX(서버 오류)
+
+	-	500 Internal Server Error
+
+		서버에 에러가 나타났음을 알립니다.
+
+	-	502 Bad Gateway
+
+		서버가 게이트웨이로부터 잘못된 응답을 수신했음을 나타냅니다.
+
+	-	504 Gateway Timeout
+
+		서버가 게이트웨이 역할을 수행하는 동안 요청을 마치기 위한 응답을 수신하지 못할 경우입니다.
+
+## 설계 규칙
+
+1.	동사 대신 명사를 사용합니다.
+
+	**@GetMapping("/getMember")** X → **@GetMapping("/member/[id]")**
+
+2.	자원에 대한 행위는 HTTP method를 이용합니다.
+
+	**@GetMapping("/books")** → 책 목록을 가져온다.<br/>
+	**@GetMapping("/books/[id]")** → 특정 책의 정보를 가져온다.<br/>
+	**@PostMapping("/books/[id]")** → 새로운 책을 등록합니다.<br/>
+	**@PatchMapping("/books/[id]")** → 특정 책을 삭제한다.
+
+3.	URI 경로에는 소문자가 적합합니다.
+
+4.	슬래시 구분자(/)는 계층 관계를 나타냅니다.
+
+	**/houses/apartments**
+
+5.	URI마지막 문자로 슬래시(/)를 넣지 않습니다.
+
+6.	밑줄(￦_), camelCase 대신 하이폰(-)을 사용하여 가독성을 높여줍니다.
+
+	**/bookAndVideo, /book-and-video** X → **/book-and-video**
+
+## 추가 자료
+
+-	GET vs OTHER
+
+	GET 방식은 다른 메서드들과 차이점을 가지고 있습니다.
+
+	1.	캐싱
+
+		GET 방식은 캐싱을 하기 때문에 반복된 요청에 더 빠릅니다.
+
+	2.	파라미터
+		
+		파라미터 내용이 노출되기 때문에 사용자들이 이를 볼 수 있습니다.
+
+	3.	길이 제한
+
+		GET 방식의 파라미터는 데이터 길이에 대한 제한이 있습니다. 제한되는 정도는 브라우저마다 다릅니다.
+
+-	idempotent(멱등성)
+
+	여러번 API가 수행되더라도 같은 결과가 나와야 한다는 말입니다.<br/>
+	GET, PUT, DELETE가 이에 속합니다.
+
+-	PUT vs PATCH
+
+POST, PUT 그리고 PATCH의 차이점은 일종의 규약이기 때문에 반드시 지킬 필요는 없습니다.<br/>
+그래도 규약을 지킨다면 메서드가 어떤 역할을 하는지가 분명해져서 코드를 이해하기 더 편해집니다.<br/>
+
+1.	PUT
+
+	데이터가 없다면 새로운 데이터를 생성하거나, 있다면 그 위에 덮어씌우는 역할을 합니다.<br/>
+	새로운 데이터를 생선한 경우에는 201(Created), 기존 데이터를 덮어쓴 경우는 200(OK) 혹은 204(No Content)로 응답해야 합니다.<br/>
+	즉 PUT은 자원의 모든 상태를 알고 있는 상태(Request에 모든 데이터)여야만 합니다.
+
+```java
+	// controller
+	@PutMapping("/member/{id}")
+	public ResponseEntity<Void> updateMember(
+		@RequestBody MemberRequest request,
+		@PathVariable String id
+	){
+		if(memberService.updateMember(request, id)){
+			return ResponseEntity.ok().build();
+		}
+		return ResponseEntity.created(URI.create("/member/id/")).build();
+	}
+
+	// service
+	@Transactional
+	public boolean updateMember(MemberRequest request, String id) {
+		boolean isMember = memberRepository.findById(id).isPresent();
+		Member member = request.toEntity();
+		memberRepository.save(member);
+
+		return isMember;
+	}
+```
+
+2.	PATCH는 PUT과 달리 Entity를 찾아오고, 그 데이터의 일부를 수정하는 역할을 합니다.
+
+```java
+	// controller
+	@PatchMapping("/member/{id}")
+	public ResponseEntity<Void> updateNickNameMember(
+		@RequestParam String nickName,
+		@PathVariable String id
+    ) {
+	    service.updateNickNameMember(nickName,id);
+	    return ResponseEntity.ok().build();
+    }
+
+	// service
+	@Transactional
+	public void updateNickNameMember(String nickname, String id) {
+		Member member = memberRepository.findById(id)
+			.orElseThrow(NoSuchElementException::new);
+
+		member.changeNickName(nickName);
+	}
+
+	// entity
+	@Entity
+	public class Member {
+		@Id
+		@Column
+		private String id;
+
+		@Column
+		private String nickName;
+
+		public void changeNickName(String nickName) {
+			this.nickName = nickName;
+		}
+	}
+```
+
+## 목적
+
+RESTful의 목적은 이해하기 쉽고 사용하기 쉬운 Application을 만드는데 있습니다.<br/>
+성능향상을 위한것이 아닌, 일종의 규칙을 만드는 것으로<br/>
+각 서비스에 맞게 적용하면 됩니다.
