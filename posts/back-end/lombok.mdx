@@ -1,0 +1,247 @@
+—
+title : 'Lombok'
+date: '2023-04-25'
+description: 'Lombok에 대해 단점과, 장점 그리고 사용한다면 어떠한 방식으로 사용해야 할까에 대한 글입니다.'
+authorId : 'show5116'
+authorName : '유영진'
+tags: ['Spring']
+—
+
+Lombok이란? <br/>
+Project Lombok is a java library that automatically plugs into your editor and build tools, spicing up your java. Never write another getter or equals method again, with one annotation your class has a fully featured builder, automate your logging variables, and much more.
+[공식문서로 부터](https://github.com/projectlombok/lombok)<br/>
+해석하여 요약하면 롬복은 에디터의 빌드툴에 자동으로 연결하여 자바를 향상시켜주는 라이브러리 입니다.
+
+## 원리
+
+위의 Lombok 설명을 보면 **편집기에 build tools를 자동으로 연결하여** 라는 말이 있습니다.<br/>
+Lombok은 실제로 컴파일러로 넘어갈 때 AST트리를 동적으로 수정하고 바이트 코드를 자동으로 작성해주는 역할을 합니다.<br/>
+결국 컴파일 시점 코드 생성이고, 컴파일러 플러그인이기 때문에, 지원하는 IDE에서만 사용할 수 있습니다.
+
+## 사용해야 할까?
+
+Lombok에 대해서는 많은 개발자들 사이에서 **사용해야 한다 vs 사용하면 안된다** 로 나뉩니다.<br/>
+결국에 Lombok은 개발을 편하게 하기 위해 사용하는 것이고, 컴파일러를 거치면 사용한 것과 사용하지 않은 것의 성능과 동작은 일치합니다.<br/>
+그래도 분명 사용했을때의 강점도 크기 때문에 실제로 많은 기업에서도 잘 사용하고 있습니다.<br/>
+개인적인 생각이지만 무조건 사용하지 말아야한다보단 잘 파악하고 사용한다면 큰 문제가 없을거라 생각합니다.<br/>
+따라서 이 문서에서는 Lombok에 대해 사용하면 안된다는 이유와 사용해야 한다는 이유를 분석하고, 이에 따라 사용하게 되면 어느 부분을 조심해야 할지에 대해 다루겠습니다.
+
+## 사용해야 한다.
+
+사용해야 한다 의견은 매우 단순합니다.<br/>
+Lombok을 잘 적용하면 코드량을 많이 줄여줍니다.<br/>
+그에 따라 개발하는 속도가 빨라지고, 또한 리펙토링이 쉬워지며, 코드를 분석하기가 매우 편해집니다.
+
+```java
+//  Lombok 미적용
+public class MemberDto {
+	private String id;
+	private String password;
+	private String name;
+	private int age;
+
+	public MemberDto () {}
+
+    public MemberDto (String id, String password, String name, int age) {
+        this.id = id;
+        this.password = password;
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+}
+
+public class MemberDtoBuilder {
+	private String id;
+	private String password;
+	private String name;
+	private int age;
+
+	public MemberDtoBuilder () {}
+
+	public MemberDtoBuilder id(String id) {
+		this.id = id;
+		return this;
+	}
+
+	public MemberDtoBuilder password(String password) {
+		this.password = password;
+		return this;
+	}
+
+    public MemberDtoBuilder name(String name) {
+		this.name = name;
+		return this;
+	}
+
+    public MemberDtoBuilder age(int age) {
+		this.age = age;
+		return this;
+	}
+
+	public Member build() {
+		return new Member(id, password, name, age);
+	}
+}
+
+// Lombok 적용
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MemberDto {
+	private String id;
+	private String password;
+	private String name;
+	private int age;
+}
+```
+
+빌드 패턴을 적용하였지만, 빌드패턴을 제외하더라도 코드량이 상당히 줄어들게 됩니다.
+
+## 사용하면 안된다.
+
+1.	컴파일러 단계에서 적용
+
+컴파일러 단계에서 지원하다보니, 특정 IDE에 종속되게 됩니다.<br/>
+뿐만 아니라 관련된 플러그인이나 설정을 해야만 적용할 수 있습니다.
+
+2.	지원 중단 시 리스크
+
+	Lombok은 코드량을 많이 줄여줍니다.<br/>
+	하지만 그만큼 이미 적용한 프로젝트에서 Lombok 코드를 제거하기란 쉽지 않은데, <br/>
+	Lombok에 관련하여서 어떠한 이슈가 발생하거나 제거 해야 할 일이 생기면 그만큼 많은 수정을 필요로 하게 됩니다.
+
+-	코드가 쉽게 변환
+
+	```java
+	// Member 클래스
+	@AllArgsConstructor
+	public class Member {
+		private String id;
+		private String name;
+	}
+
+	// 사용하는 곳
+	Member member = new Member("id", "name");
+	```
+
+	위와 같은 코드가 있고 정상적으로 동작할 때, 만약 누군가가 아래와 같이 코드를 수정할 수 있습니다.
+
+	```java
+	// Member 클래스
+	@AllArgsConstructor
+	public class Member {
+		private String name;
+		private String id;
+	}
+
+	// 사용하는 곳
+	Member member = new Member("id", "name");
+	```
+
+	단순히 위 아래 순서만 고쳤지만 실 사용되던 곳의 코드는 완전히 다르게 됩니다.<br/>
+	컴파일 에러를 발생하지 않으면서 코드가 쉽게 변환 될 가능성을 가지게 됩니다.
+
+-	순환참조
+
+	JPA Data의 Eintity에서 양방향 매핑을 할 때처럼, 서로가 서로를 참조하고 있을 때와 같이,<br/>
+	아무런 생각없이 @ToString 어노테이션을 사용한다면 Stack Over Flow가 발생합니다.
+
+## 해결방안
+
+이슈들로부터 비교적 안전하게 Lombok을 사용하기 위한 방안들입니다.
+
+-	**@Data** 사용 금지
+
+	**@Data* 어노테이션은 @RequiredArgsContructor + @Getter + @Setter + @ToString + @EquialsAndHashCode 입니다.<br/>
+	필요 없는 어노테이션까지 가져올 가능성이 많고, 클래스를 잘못 사용하게 될 가능성이 있습니다.
+
+-	**@ToString**은 조심해서
+
+	exclude 파라미터를 활용해서 특정 필드만 제외시킬 수 있습니다.<br/>
+	순환참조일 경우 해당 필드를 제외시키고, 조심해서 사용해야 합니다.
+
+-	**@XXArgsConstructor**
+
+	해당 어노테이션들은 위에서 언급하였듯, 코드가 쉽게 변할 수 있는 리스크를 가지게 됩니다.
+
+	1.	**@Builder**와 함께 이용
+
+		접근레벨을 access = PRIVATE로 낮추고 Builder 패턴을 사용하면 코드가 생성자에 종속적이지 않게 되어서, 안전한 코드 작성이 가능합니다.
+
+	2.	사용하지 않음
+
+		그냥 사용하지 않고 생성자를 직접 만들어주는 것도 하나의 방법입니다.
+
+-	**EqualsAndHashCode**
+
+	equals 메서드와 hashcode 메서드를 생성해주는 어노테이션 입니다.<br/>
+	하지만 무분별하게 사용하면, Set과 함께 사용할 경우에 이슈가 발생할 수 있습니다.
+
+	```java
+	// Member클래스
+	@AllArgsConstructor
+	@EqualsAndHashCode
+	@Setter
+	public class Member {
+		private String id;
+		private String name;
+	}
+
+	// Set 사용
+	Set<Member> memberSet = new HashSet();
+	Member member = new Member("id1","홍길동");
+	memberSet.add(member);
+	member.setName("개명");
+	memberSet.add(member);
+	```
+
+	위의 코드 결과를 보면 분명 member객체는 하나뿐인데, Set은 이를 구별하지 못하게 되는 현상이 일어나게 됩니다.<br/>
+	따라서 Pk들과 같은 변할일이 없는 객체에만 사용하기를 권합니다.
+
+	```java
+	@Entity
+	public class Member {
+		@EmbededId
+		private MemberId;
+		......
+	}
+
+	@Embeddable
+	@EqualsAndHashCode // Id Class는 불변 객체입니다.
+	public class MemberId implements Serializable {
+		......
+	}
+	```
