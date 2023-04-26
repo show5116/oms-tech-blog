@@ -1,7 +1,7 @@
 ---
-title: 'React Component 분석하기'
+title: 'React Class형 Component 분석하기'
 date: '2023-04-08'
-description: 'React의 Component를 분석하여 공통 코드를 이해할 수 있도록 하는 글입니다.'
+description: 'React의 Class형 Component를 분석하여 공통 코드를 이해할 수 있도록 하는 글입니다.'
 authorId: 'show5116'
 authorName: '유영진'
 tags: ['React','Component']
@@ -31,7 +31,7 @@ import React from 'react';
 
 /* type 선언부
    typeScript에서 지원해주는 기능으로, 사용할 변수 명과 타입을 선언해주어서,
-   컴포넌트의 가독성을 올려주고, 자동완성 및 컴파일 에러를 지원해줍니다. /*
+   컴포넌트의 가독성을 올려주고, 자동완성 및 컴파일 에러를 지원해줍니다. */
 interface OwnProps {
 	// 변수명 뒤에 ?를 붙히면 | undefined가 됩니다.
 	// 즉 initialCounter: number | undefined와 같아집니다.
