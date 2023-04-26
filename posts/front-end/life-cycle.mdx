@@ -1,0 +1,194 @@
+---
+title: 'LifeCycle Method'
+date: '2023-04-26'
+description: 'class형 컴포넌트의 라이프 사이클에 대해 알아보고 그를 활용할 수 있도록 하는 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['React','Component']
+thumbnail: '/front-end/life-cycle.png'
+---
+
+[이미지 출처](https://projects.wojtekmaj.pl/react-lifecycle-methods-diagram)<br/>
+[공식문서](https://ko.reactjs.org/docs/state-and-lifecycle.html#adding-lifecycle-methods-to-a-class)<br/>
+React의 class형 컴포넌트는 위 이미지와 같은 생명주기를 가집니다.<br/>
+Mounting, Updating, UnMounting의 3가지 상황이 있고,<br/>
+각 상황에 맞는 라이프 사이클 메서드를 거치면서 컴포넌트가 DOM에 올라가게 됩니다.<br/>
+라이프 사이클과 비동기에 대해 이해하면 리엑트에서 본인이 원하는대로 동작하는지 아닌지 판단하기 쉬워집니다.
+
+## 단계
+
+생명주기 메서드는 3가지 단계를 가지고 있습니다.<br/>
+각 단계에 맞게 코드를 짜야 컴포넌트가 의도한대로 동작합니다.
+
+-	Render 단계
+
+	이 단계에서는 사이드 이펙트 없이 순수하게 지닌 값을 통해 렌더링 됩니다.<br/>
+	사이드 이펙트란 state를 업데이트 하는 행위 등을 말하며, 이 시점에서는 컴포넌트를 일시정지, 중단, 렌더, 재시작 등이 가능합니다.
+
+-	Pre-commit 단계
+
+	업데이트에서의 getSnapshotBeforeUpdate만 이 단계에 해당하는데, 렌더를 마치고 DOM에 반영되기 직전에 일어납니다.<br/>
+    이 상황에서도 DOM을 읽을 수 있습니다.
+
+-	Commit 단계
+
+	변경사항들을 DOM에 적용시킵니다.<br/>
+	적용 이후에 `componentDidMount`, `ComponentDidUpdate` 메서드를 호출하여 사이드 이펙트를 발생시킬 수 있습니다.
+
+## 생명주기 메서드
+
+### 생성 (Mounting)
+
+컴포넌트가 처음으로 불려져 생성될 때 입니다.<br/>
+Re-Render 시에는 불리지 않고 오직 한번만 불려지게 됩니다.
+
+-	**constructor**
+
+	컴포넌트의 생성자 입니다.<br/>
+	컴포넌트가 생성되면서 가장 먼저 실행 됩니다.<br/>
+	state나 변수, 그리고 클래스를 이곳에서 초기화 해줍니다.
+
+	```tsx
+	constructor(props: OwnProps) {
+		super(props);
+
+		this.state = {
+			example : 'exp',
+		}
+	}
+	```
+
+	`super()`는 빈 객체를 만들고 this에 이 객체를 할당하는 일을 부모 클래스에게 기대합니다.<br/>
+	자식 클래스의 인스턴스에는 고유 멤버와 부모 클래스의 모든 멤버도 포함 되었기 때문에 반드시 호출해야 합니다.<br/>
+	`super(props)`의 props는 넣어주지 않더라도 클래스에서 인식은 할 수 있습니다.<br/>
+	하지만 constructor 단계에서는 props가 `undefined` 상태가 되는데 constructor에서 props를 사용하기 위해선 반드시 넣어줘야 합니다.
+	**주의 constructor에서 state에 props를 넣을 때**<br/>
+	외부의 props가 변경되어도 constructor에서 초기화를 해주게 된다면 state는 변하지 않습니다.<br/>
+	외부 props에 따라 동작하게 하려면 update시에도 불려지는 getDerivedStateFromProps에서 넣어주거나, 혹은 props그 자체로 이용해야 합니다.
+
+-	getDerivedStateFromProps
+
+	이 메서드는 props로 받아온 데이터를 state에 넣어줄 때 사용하는 메서드입니다.<br/>
+	일반적으로 사용되는 함수는 아니며, state가 props에 의존해야 하는 경우에만 사용합니다.
+
+	```tsx
+	getDerivedStateFromProps() {
+		if(props.firstName + props.lastName !== state.name) {
+			return {
+				name : props.firstName + props.lastName,
+			}
+		}
+		return null;
+	}
+	```
+
+-	render
+
+	컴포넌트를 렌더링 해주는 메서드입니다.<br/>
+	클래스 컴포넌트에서 반드시 필요로 하는 메서드이고, 실제 DOM에 올라가게 될 태그들 입니다.
+
+	```tsx
+	render() {
+		return (
+			<div>
+				<input type='text' value={this.state.text}>
+			</div>
+		)
+	}
+	```
+
+-	**componentDidMount**
+
+	컴포넌트가 마운트된 직후 실행됩니다.<br/>
+	네트워크 요청을 통한 초기화 작업을 할 때 자주 사용됩니다.
+
+	```tsx
+	componentDidMount() {
+		ajax.get("/example").then(......);
+	}
+	```
+
+### 업데이트 (Updating)
+
+state가 변화하거나 props가 변화하거나 혹은 `forceUpdate()` 메서드를 사용할 때 발생합니다.
+
+-	getDerivedStateFromProps
+
+	생성시와 마찬가지입니다. props에 대해 tate가 갱신됩니다.
+
+-	**shouldComponentUpdate**
+
+	`성능 최적화 메서드`입니다.<br/>
+	이 메서드는 컴포넌트가 리렌더링을 할지 말지 결정해줍니다.<br/>
+	true값을 반환하면 리렌더링을 진행하고, false값을 반환하면 리렌더링이 일어나지 않습니다.<br/>
+	리엑트는 부모 컴포넌트가 리렌더링 되면 자식 컴포넌트도 전부 리렌더링이 일어납니다.<br/>
+	이 메서드를 활용하면 부모 컴포넌트의 리렌더링에 자식 컴포넌트가 자유로워집니다.<br/>
+	기본타입(string, number 등..)은 그냥 비교해도 상관없으나, 참조타입(object, array)등은 **주의 얕은 비교를 해야만 값 비교가 가능합니다.**
+
+	```tsx
+	shouldComponentUpdate(nextProps, nextState) {
+		return this.props.data !== nextProps.data;
+	}
+	```
+
+-	render
+
+	생성시와 마찬가지로 새로운 결과값이 반영된 컴포넌트를 렌더해줍니다.
+
+-	getSnapshotBeforeUpdate
+
+	이 메서드는 컴포넌트의 변화를 DOM에 반영하기 직전에 호출되는 메서드입니다.<br/>
+	스크롤바 위치처럼 업데이트 직전의 값을 참고할 때 쓰이며,<br/>
+	이 메서드에서 componentDidUpdate메서드로 새로운 값을 넘겨줄 수 있습니다.<br/>
+	일반적인 상황에선 쓰이지 않으나 스크롤 이벤트 같은 경우에 필요합니다.
+
+-	componentDidUpdate
+
+	컴포넌트가 업데이트 된 후에 불려집니다.<br/>
+	state나 props의 변화에 따른 로직을 수행할 때 사용하기 적절합니다.
+
+	```tsx
+	// getSnapshotBeforeUpdate 미사용
+	componentDidUpdate(prevProps, prevState) {
+		if (this.props.data !== prevProps.data) {
+			this.flag = true;
+		}
+	}
+
+	// getSnapshotBeforeUpdate 사용
+	getSnapshotBeforeUpdate(prevProps, prevState) {
+		if (prevProps.list.length < this.props.list.length) {
+			const list = this.listRef.current;
+			return list.scrollHeight - list.scrollTop
+		}
+		return null;
+	}
+
+	componentDidUpdate(prevProps, prevState, snapshot) {
+		if (snapshot !== null) {
+			const list = this. listRef.current;
+			list.scrollTop = list.scrollHeight - snapshot;
+		}
+	}
+	```
+
+### 제거 (UnMounting)
+
+컴포넌트가 제거될 때 일어납니다.
+
+-	componentWillUnmount
+
+	컴포넌트가 DOM에서 사라지기 직전에 호출됩니다.<br/>
+	타이머 제거, 네트워크 요청 취소 등의 정리작업을 실행하기 적절합니다.<br/>
+	이곳에선 반드시 setState를 발생시키면 안됩니다.
+
+### 기타
+
+-	componentDidCatch
+
+	자식 컴포넌트에서 에러가 발생한 경우 호출됩니다.<br/>
+	commit단계에서 수행되므로, 에러 처리를 통한 side effect를 일으켜도 좋습니다.
+
+-	componentWillMount
+
+	컴포넌트가 DOM에 추가되기 직전에 실행되는 함수이나, 현재는 <dep>deprecated</dep>된 함수입니다.
