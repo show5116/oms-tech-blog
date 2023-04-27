@@ -1,0 +1,181 @@
+---
+title: 'Immutable js'
+date: '2023-04-27'
+description: '불변객체를 만들어주는 immutable js입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['util']
+---
+
+[공식문서](https://immutable-js.com/)<br/>
+immutable이란 불변이란 뜻입니다.<br/>
+javaScript에서는 원시타입들은 변경이 불가능하지만, 그 이외에는 모두 변경이 가능한 값들입니다.<br/>
+변경이 가능한 값들은 메모리 주소를 참조하고 있기 때문에 값이 변경될 경우 해당 값을 사용하는 모든 곳에서 side effect가 발생하게 됩니다.
+
+## 값의 불변성
+
+```js
+// javaScript에서 string은 원시타입입니다.
+let immutable = 'text';
+// 원시타입은 값을 재할당 할 수는 있어도 변경할 순 없습니다.
+immutable = 'abcd';
+
+// 참조타입은 메모리만을 참조하므로 값이 변경 가능합니다.
+const mutable = {
+	one: '1',
+	two: '2',
+};
+
+mutable.two = '3';
+
+// 따라서 참조타입에서 불변성을 가지려면 새로운 객체를 만들어서 재할당을 해야합니다.
+let reallocation = {
+	one: '1',
+	two: '2',
+};
+
+reallocation = {
+	one: '1',
+	two: '3',
+};
+
+// 혹은 깊은 복사를 활용하여 주소값이 다른 객체를 생성 후 값을 변경해야 합니다.
+const originObject = {
+	one: '1',
+	two: '2',
+};
+
+const copyObject = { ...originObject, two : '3' };
+```
+
+## 복잡한 구조의 객체
+
+다행히도 구조가 간단한 객체의 경우에는 깊은복사를 통한 불변성 유지가 쉽습니다.<br/>
+하지만 객체가 복잡한 경우에는 복사 또한 어려워집니다.
+
+```js
+const object1 = {
+	name: 'object1',
+	item: {
+		phone: '아이폰',
+		car: '제네시스',
+	},
+};
+
+const object2 = { ...object1 };
+
+object1.item.phone = '갤럭시';
+console.log(object2.item.phone); // 갤럭시
+```
+
+위의 예시처럼 깊은 복사를 하였음에도 불구하고 object1내의 item은 얕은 복사가 이루어 집니다.<br/>
+이러한 객체를 깊은복사 하기 위해선 아래와 같이 해야합니다.
+
+```js
+const object1 = {
+	name: 'object1',
+	item: {
+		phone: '아이폰',
+		car: '제네시스',
+	},
+};
+// 객체 내의 item도 깊은 복사를 해야 합니다.
+const object2 = { ...object1, item: { ...object1.item }};
+
+// 혹은 문자열로 변환하였다가 다시 객체로 변환할 수 있습니다.
+const object3 = JSON.parse(JSON.stringify(object1));
+```
+
+하지만 객체가 복잡해질수록, 혹은 데이터의 구조를 확실히 알지 못할수록 깊은 복사를 이용하기 힘들어 집니다.<br/>
+문자열로 변환하는 방법 또한 필요 이상의 연산 작업이 들어가고 좋은 방법은 아닙니다.
+
+## immutable js 적용
+
+immutable js는 List,Map,Stack,Set등의 데이터 구조를 제공해줍니다.<br/>
+불변 컬렉션으로 값의 변경을 불가능 하게 하면서 대신에 재할당을 하도록 합니다.<br/>
+또한 Batching Mutations와 Lazy Seq기능으로 인해 성능 향상을 기대할 수 있습니다.<br/>
+
+-	Batching Mutations
+
+	반환을 하기 전에 데이터의 변화가 여러번 일어난다면, 새로운 컬렉션을 생성하지 않고 반환을 할 때만 새로운 불변 컬렉션을 생성합니다.
+
+-	Lazy Seq
+
+	연쇄작업 (filter, map 등...)이 있을 경우에 새로운 컬렉션을 생성하지 않고 필요한 만큼만 연산해줍니다.
+
+반면에 적용할 때의 단점도 존재합니다.<br/>
+라이브러리를 추가함으로서 패키지의 사이즈가 커지게 되고, 뿐만 아니라 새로운 데이터 구조의 학습을 해야만 합니다.
+
+### Map
+
+자바스크립트의 object와 비슷합니다.<br/>
+다만 값을 변경할 때, 직접할당을 하지 않고 메서드를 통해 새로운 객체를 생성해줍니다.
+
+```js
+import { Map } 'immutable';
+
+const testMap = Map({
+	one: 1,
+	two: 2,
+	three: Map({
+		four: 4,
+		five: 5,
+	}),
+});
+
+// object의 testMap.one = 10; 과 비슷하나 새로운 객체를 return합니다.
+const newMap1 = testMap.set(one, 10);
+// depth가 존재할 경우 setIn 메서드로 depth를 표현합니다.
+const newMap2 = testMap.setIn([three, four], 40);
+// 여러개의 값을 동시에 변경할 땐 mergeIn을 사용합니다.
+const newMap3 = testMap.mergeIn([three], {four: 40, five: 50 });
+```
+
+### List
+
+마찬가지로 자바스크립트의 []와 비슷합니다.
+
+```js
+import { Map, List } from 'immutable';
+
+const testList = List([Map({ test: 1 }), Map({ test: 2 })]);
+
+// get 메서드를 사용해서 n번째 원소값을 가져옵니다.
+const element1 = testList.get(0);
+// List내의 Map을 가져오려면 다음과 같이 사용합니다.
+const element2 = testList.get([0, 'test']);
+// n번째 원소값을 수정할 땐 set을 사용합니다.
+const newList1 = testList.set(0, Map({ test: 3 }));
+// n번째 원소의 내부 값을 변경할 땐 setIn을 사용합니다.
+const newList2 = testList.setIn([0, 'test'], 3);
+// 아이템을 추가할 땐 push를 이용합니다.
+const newList3 = testList.push(Map({ test: 4 }));
+// 아이템을 제거할 때는 delete를 사용합니다.
+const newList4 = testList.delete(0);
+```
+
+### fromJS
+
+fromJS를 사용하면 javascript의 참조객체를 immutable의 Map과 List로 알맞게 변환하여 eturn 해줍니다.<br/>
+이를 활용하면 사용방법을 익히지 않고도 활용하기 쉽습니다.
+
+```js
+const testMap = fromJS({
+	a : 1,
+	b : 2,
+	c : {
+		d: [4,5],
+	}
+});
+```
+
+### toJS
+
+fromJS의 반대로 immutable의 불변객체를 javascript의 참조객체로 변환해줍니다.
+
+## React에서 활용
+
+React에서 리렌더가 일어날 때는 state나 props가 변경될 때 리렌더가 일어나게 됩니다.<br/>
+하지만 state나 props가 참조형일 때에는 내부 데이터가 변경되도 주소값은 그대로이기 때문에 리렌딩이 일어나게 되지 않습니다.<br/>
+값이 변동될 일이 없을 떈 적용하지 않아도 되고, 데이터 구조가 간단하다면 깊은 복사를 활용하면 됩니다.<br/>
+하지만 때에 따라서는 불변객체를 적용해야 좋습니다.
