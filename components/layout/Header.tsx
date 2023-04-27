@@ -29,7 +29,7 @@ const Header = React.memo(() => {
         <S.Container isScrollDown={isScrollDown}>
             <S.HeaderMenu>
                 <Link href="/">
-                    <S.Logo>OMS-Tech-Blos</S.Logo>
+                    <S.Logo>OMS-Tech-Blog</S.Logo>
                 </Link>
                 <S.RightMenu>
                     <FontAwesomeIcon
