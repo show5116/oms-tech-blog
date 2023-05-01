@@ -1,0 +1,88 @@
+---
+title: 'AES 암호화'
+date: '2023-05-01'
+description: 'AES란 무엇인지, CryptoJS와 java에서 암호화 복호화 방법'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['util']
+---
+
+## AES
+
+암호화를 하는 방식에는 단방향 암호화, 비밀키 암호화, 공개키 암호화가 있는데, 그중 AES는 비밀키 암호화 입니다.<br/>
+많은 곳에서 AES를 사용하고 있습니다.
+
+## Padding
+
+패딩(Padding)이란 데이터를 블럭으로 암호화할 때 평문이 항상 블럭크기의 갯수가 될 수 없습니다.<br/>
+따라서 평문의 마지막 블록을 암호화 되기 전에 어떠한 데이터로 남은 공간을 채워주는 방식입니다.<br/>
+AES에서는 PKCS 패딩을 사용하는데, 이 방식은 예를들어 16바이트의 평문 중 3바이트가 비어있다면 3바이트를 모두 05로 채우는 방식입니다.<br/>
+PKCS#5와 PKCS#7 두가지가 있는데, 구현 되는 방식은 둘다 같고 다만 PKCS#5는 8바이트 고정, PKCS#7은 바이트가 고정되어있지 않습니다.<br/>
+
+### Mode
+
+모드(Mode)는 블럭 암호화 순서 및 규칙에 대한 표준입니다.<br/>
+모드에 따라서 IV(초기화 벡터)를 사용할 수도 있고, 사용하지 않을수도 있습니다.<br/>
+일반적으론 CBC(Cipher-Block Chaining)모드가 가장 많이 사용됩니다.<br/>
+이 모드는 최초 평문 1블럭과 IV를 XOR 연산한 다음 암호화하고, 다음 평문 1블럭은 앞에서 암호화된 결과 블럭과 XOR하여서 다시 암호화 하는 방식입니다.
+
+### PBKDF2
+
+PBKDF는 Password-Based Key Derivation Function입니다.<br/>
+만약에 키 값을 탈취당했을 때를 고려하여서 키 값을 늘려버리고 암호화의 횟수를 여러번으로 늘려서 움호화의 수행 시간을 오래 걸리게 해줍니다.<br/>
+이 과정을 키 확장이라 하고, 외부 공격으로 부터 비교적 안전하게 해줍니다.<br/>
+salt와 반복횟수를 지정해주어서 새로운 결과값을 만들어냅니다.<br/>
+`salt`란 해시함수를 돌리기 전에 임의의 문자열ㅇㄹ 덧붙이는 것을 의미합니다.
+
+## cryptoJS
+
+cryptoJS는 javascript의 표준 및 보안 암호화 알고리즘 구현 라이브러리입니다.<br/>
+일반적인 사용법은 `CryptoJS.AES.encrypt('변화할 데이터','비밀키', { mode: '모드', padding: '패딩', iv: '초기화벡터' })`의 구조로 사용됩니다.
+
+```js
+const key = {
+	iv: '...', // 32바이트(크기)의 문자열 초기화 벡터
+	sa: '...', // 32바이트(크기)의 문자열 salt
+	pa: '...', // 32바이트(크기)의 문자열 비밀키
+};
+
+const encrypt = (value: string, use: boolean = true) => {
+	if(!use) return value;
+	return ((CryptoJS) =>{
+		return CryptoJS.AES.encrypt(
+			value,
+			// 비밀키에 PBKDF2를 적용하여 비밀키를 암호화합니다.
+			// CryptoJS.PBKDF2('암호키', 'salt', { keySize: 키사이즈, iterations: 반복횟수 })
+			CryptoJS.PBKDF2(key.pa, CryptoJS.enc.Hex.parse(key.sa), { keySize: 4, iterations: 1000 }),
+			// mode는 default로 'CBC', padding은 default로 'Pkcs7'이 됩니다.
+			{
+				iv: CryptoJS.enc.Hex.parse(key.iv)
+			}
+		).toString();
+	})(window['CryptoJS']);
+};
+```
+
+## in java
+
+java에서는 위의 암호화 결과를 decrypt(해독)하고 있습니다.<br/>
+
+```java
+public static final String ENC_KEY = "..."; // cryptojs의 pa와 동일한 비밀키
+public static final String salt = "..."; // cryptojs의 sa와 동일한 salt
+public static final String iv = "...";// cryptojs의 iv와 동일한 초기화 벡터
+
+private static String decrypt(String salt, String iv, String passphrase, String ciphertext, int iterationCount, int keySize) throws Exception {
+	SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+	// 반복횟수와 키 사이즈를 설정하고 salt를 이용해 KeySpec을 만듭니다.
+	KeySpec spec = new PBEKeySpec(passphrase.toCharArray(), Hex.decodeHx(salt.toCharArray()), iterationCount, keySize);
+	// KeySpec을 적용해 PBKDF2 방식으로 암호화된 비밀키를 만들어줍니다.
+	SecretKey = key = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
+	// PKCS5Padding의 Instance를 불러오지만, PKCS#7과 로직이 일치하여 해당 인스턴스만 존재합니다.
+	Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+	// CBC모드로 IV를 적용하여서 해독합니다.
+	cipher.init(Cipher.DECRYPT_MODE, key, new IvParameterSpec(Hex.decodeHex(iv.toCharArray())));
+	byte[] decrypted = cipher.doFinal(Base64.decodeBase64(ciphertext));
+	return neew String(decrypted, "UTF-8");
+}
+```
