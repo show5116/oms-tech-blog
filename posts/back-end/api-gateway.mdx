@@ -1,0 +1,167 @@
+---
+title: 'API Gateway'
+date: '2023/05/02'
+description: 'API Gateway의 역할과 구성 방법'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['MSA']
+---
+
+처음에 MSA프로젝트에 투입되었을 때 Front-end에서는 Request Header를 넣어주는 코드가 없었는데,<br/>
+로컬 환경이 아닌 개발 환경에서만 Request Header가 들어가서 당황했었던 적이 있었습니다.<br/><br/>
+API Gateway는 각각의 요청을 일괄처리 해주는 Gateway(관문) 역할을 하면서 다양한 역할을 수행할 수 있는 MSA에서 중요한 서비스입니다.<br/>
+
+## 특징
+
+-	인증 및 권한 부여
+-	서비스 검색 통합
+-	응답 캐싱
+-	정책, 회로차단기 및 QoS 다시 시도
+-	속도 제한
+-	부하 분산(load balance)
+-	로깅, 추적, 상관 관계
+-	헤더, 쿼리 문자열 및 청구 변환
+-	IP 허용 목록에 추가
+
+## Netflix Zuul
+
+Spring Cloud의 Netflix Zuul은 Spring 2.4버전 이후부터는 더이상 지원하지 않습니다.<br/>
+현재 OMS에서는 Netflix Zuul을 Gateway로 사용중이며, 그 이후 버전의 프로젝트에서는 Spring Cloud Gateway를 적용해야 합니다.
+
+## Setting
+
+### Eureka
+
+먼저 Gateway를 만드려면 Eureka Server에 등록을 해야 합니다.<br/>
+Gateway는 이를 통해 Eureka로부터 serviceId와 그곳의 EndPoint를 알게 되고,
+적절하게 Load Balance를 할 수 있습니다.
+
+```java
+@SpringBootApplication
+@EnableZuulProxy
+@EnableEurekaClient
+public class GatewayApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(GatewayApplication.class, args);
+	}
+}
+```
+
+```yml
+## bootstrap.yml
+eureka:
+	client:
+		serviceUrl:
+			defaultZone: http://localhost:8081/eureka/
+		registerWithEureka: true
+		fetchRegistry: true
+```
+
+### zuulRoutes
+
+zuul Routes는 정해진 path 규칙에 따라서 알맞는 서비스 명으로 보내줄 수 있습니다.
+
+```yml
+## application.yml
+zuul:
+	ignored-services: '*'
+	sensitive-headers:
+	routes:
+		auth-service:
+			path: /auth/**
+			serviceId: auth-service
+			stripPrefix: false
+
+		main-service
+			path: /main/**
+			service: main-service
+			stripPrefix: false
+```
+
+-	ignored-services
+
+	자동 생성에서 제외할 서비스들을 지정해줍니다.
+
+-	sensitive-headers
+
+	내부에서 사용되는 헤더값이 노출되는 것을 막아줍니다.
+
+-	routes
+
+	path에 맞는 조건의 API 요청들을 eureka에 등록된 serviceId로 zuul이 검색하여 알맞는 서비스에 API요청을 보내줍니다.
+
+## ZuulFilter
+
+ZuulFilter는 Gateway에서 서비스로 요청을 보내기 전, 거치게 되는 서비스입니다.<br/>
+이곳에서 Jwt토큰을 확인하는 로직 등을 넣을 수 있습니다.
+
+```java
+@Configuration
+public class TestFilter extends ZuulFilter {
+	@Override
+	public String filterType() {
+		return "pre";
+	}
+
+	@Override
+	public int filterOrder() {
+		return 0;
+	}
+
+	@Override
+	public boolean shouldFilter() {
+		return true;
+	}
+
+	@Override
+	public Object run() {
+		return null;
+	}
+}
+```
+
+-	filterType
+
+	filterType은 필터의 타입, 적용 시점을 설정하는 메서드입니다.<br/>
+	총 4가지의 타입이 있습니다.
+
+	1.	**pre**
+
+		API 서버로 라우팅 되기 전에 수행하는 필터(인증, 로깅 등..)
+
+	2.	**routing**
+
+		요청에 대한 라우팅을 제어하기 위해 수행하는 필터(Ribbon)
+
+	3.	**post**
+
+		API 서버로 라우팅 된 후 수행하는 필터(HTTP Header 추가 및 데이터 수집)
+
+	4.	**error**
+
+		앞 단계 필터들에서 발생된 오류 수행 필터(Exception)
+
+-	filterOrder
+
+	filterOrder는 여러개의 filter를 사용할 때, filter의 등록 순서를 정해줍니다.<br/>
+	0부터 순서대로 Filter가 적용됩니다.
+
+-	shouldFilter
+
+	shouldFilter는 해당 필터를 적용시킬지 말지 결정해주는 메서드입니다.
+
+	```java
+	// RequestContext는 요청되는 API 정보를 담고 있는 객체 입니다.
+	RequestContext context = RequestContext.getCurrentContext();
+
+	String url = context.getRequest().getRequestURI();
+	if(whiteList.contains(url)) return false;
+	return true;
+	```
+
+	위의 예시처럼 whiteList의 값이 들어올 경우 filter를 미적용 시키는 방법으로 사용할 수 있습니다.
+
+-	run
+
+	실제 동작을 하는 부분입니다.<br/>
+	어떠한 인증을 하거나 혹은 request에 새로운 값을 추가해줄 수 도 있고, Exception을 일으켜서 예외처리 등에도 사용할 수 있습니다.
