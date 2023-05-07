@@ -1,0 +1,134 @@
+---
+title:'Netflix Zuul을 활용하여 JWT 인증 구현'
+date: '2023-05-07'
+description: 'Netflix Zuul의 ZuulFilter를 이용하여 JWT 인증 구현합니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['MSA', 'JWT']
+---
+
+[지난번 포스트 API Gateway](/post/back-end/api-gateway)에 이어 활용하는 내용입니다.<br/>
+Netflix Zuul을 API Gateway로 사용하면서 ZuulFilter를 활용하여 JWT인증을 구현합니다.<br/>
+Gateway에 인증을 구현함으로서, 각 서비스는 자신의 역할에만 집중하여 로직을 구현할 수 있고, 공통된 인증 시스템을 구현할 수 있습니다.
+
+## Filter 작성
+
+```java
+@Configuration
+public class JwtFilter extends ZuulFilter {
+	
+	private final Logger logger = (Logger) LoggerFactory.getLogger(this.getClass());
+
+	@Override
+	public String filterType() {
+		return FilterConstants.PRE_TYPE; // "pre"를 return합니다.
+	}
+
+	@Override
+	public int filterOrder() {
+		return 0;
+	}
+
+	@Override
+	public boolean shouldFilter() {
+		return true;
+	}
+
+	@Override
+	public Object run() {
+		return null;
+	}
+}
+```
+
+**shouldFilter**와 **run**부분은 아래에서 작성하고,<br/>
+filterType은 API 서버로 라우팅 되기 전에 인증을 수행하고 그에 따라서 라우팅을 취소하거나 해야하니 **pre**로 해줍니다.<br/>
+filterOrder는 0으로 가장 먼저 등록되게 하겠습니다.
+
+## shouldFilter
+
+shouldFilter부분은 인증을 수행할지 말지를 결정해야 합니다.<br/>
+대부분의 로직은 인증을 수행해야 하지만 회원가입, 로그인 아이디 찾기 등 토큰을 발급받기 전에 수행해야할 로직들은 인증을 하면 안됩니다.<br/>
+또한 HTTP Method의 OPTIONS는 통신 옵션만 요청하여 가능 여부만 검사하니 이 또한 인증을 하지 않습니다.
+
+```java
+@Override
+public boolean shouldFilter() {
+	RequestContext context = RequestContext.getCurrentContext();
+
+	if ("OPTIONS".equals(context.getRequest().getMethod())) {
+		return false; // OPTIONS는 인증을 하지 않습니다.
+	}
+
+	List<String> whiteList = getWhiteList();
+	// HttpServletRequest의 getRequestURI는 쿼리 param을 제외한 컨텍스트 경로부터 가져옵니다.
+	if (whiteList.contains(context.getRequest().getRequestURI())) {
+		return false;
+	}
+
+	return true; 
+}
+
+private List<String> getWhiteList() {
+	return List.of("/auth/sign", "/auth/user/id");
+}
+```
+
+**getWhiteList** 메서드를 이용해서 인증을 거치지 않을 URI들을 가져옵니다.<br/>
+해당 기능은 DataBase 구조에 따라서 Service를 거쳐서 DB로 부터 가져와도 되고,<br/>
+혹은 Enum을 활용하거나 혹은 위의 예시처럼 직접 String을 넣어도 됩니다.<br/>
+Http Method까지 포함하여 객체를 만들어 비교하는 방법도 가능합니다.<br/>
+여기선 테스트 코드로 직접 String을 넣었습니다.
+
+## run
+
+이 부분에선 실제 인증 과정을 작성해줍니다.<br/>
+API 요청으로부터 JWT 토큰을 가져오고 해당 토큰을 parse해서 문제가 있는지 확인합니다.
+
+```java
+@Configuration
+public class JwtFilter extends ZuulFilter {
+	private final Logger logger = (Logger) LoggerFactory.getLogger(this.getClass());
+
+	// Value 어노테이션은 properties나 yml파일로부터 설정값을 가져옵니다. cloud config server를 만들어 값을 숨길 수 있습니다.
+	@Value("${jwt.signKey}")
+	private String jwtSignKey;
+	......
+}
+```
+
+field부분에 JWT의 signKey를 가져오는 코드를 추가합니다.
+
+```java
+@Override
+public Object run() throws ZuulException {
+	try {
+		RequestContext requestContext = RequestContext.getCurrentContext();
+		String jwt = requestContext.getRequest().getHeader("Authorization")
+			.substring(7); // "Bearer "의 크기만큼 제거
+	
+		Claims claims = Jwts.parser().setSigningKey(jwtSignKey).parseClaimsJws(jwt).getBody();
+	} catch (ExpiredJwtException ex) {
+		// 토큰의 기간이 지난 경우입니다. Refresh 토큰을 활용할 경우 여기서 처리할 수 있습니다.
+		this.requestRefreshToken();
+	} catch (UnsupportedJwtException | MalformedJwtException | SignatureException ex) {
+		// jwt의 구조가 잘못되거나, 서명에 실패할 경우입니다. 
+		logger.warn("Bad Request" + ex.getMessage());
+		throw new ZuulException("Bad token", HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+	} catch (Exception ex) {
+		logger.warn("Something wrong in gateway" + ex.getMessage());
+		throw new ZuulException("Something wrong in gateway", HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage());
+	}
+	return null;
+}
+
+private void requestRefreshToken() {
+	// auth 서비스로 URI를 변경하여서 refresh 토큰을 얻는 시도를 하도록 변경합니다.
+	RequestContext context = RequestContext.getCurentContext();
+	context.getRequest().setAttribute(WebUtils.INCLUDE_REQUEST_URI_ATTRIBUTE, "/auth/refresh");
+}
+```
+
+토큰에 대해 인증을 수행하고 expired 될 경우에는 refresh 토큰을 얻을 수 있는지 auth 서비스에 요청합니다.<br/>
+그 이외의 인증에 실패할 경우에는 Exception을 일으켜서 요청을 취소하고 로그를 남깁니다.<br/><br/>
+다음 포스트에는 auth 서비스에서 로그인을 통해 토큰을 발급받고, 또한 refresh 토큰을 발급받는 과정을 설명하겠습니다
