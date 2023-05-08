@@ -25,6 +25,7 @@ const Strong = ({ children }: IProps) => {
                 </S.Tip>
             );
         }
+        return <S.Strong>{children}</S.Strong>;
     } else {
         return (
             <S.Caution>
