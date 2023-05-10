@@ -1,0 +1,149 @@
+---
+title: 'JWT (Json Web Token)'
+date: '2023-05-10'
+description: 'JWT에 대한 글입니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JWT']
+thumbnail: '/front-end/jwt.png'
+---
+
+요즘에는 많은 웹 서비스들이 SPA를 구현하면서 프론트엔드와 백엔드 사이의 역할이 확연하게 나뉘고,<br/>
+동시에 세션을 사용하기 힘들어지면서 token을 이용한 인증이 많이 구현됩니다.<br/>
+그러면서 가장 많이 사용하는 인증 방식이 JWT를 통한 인증 방식입니다.
+
+## JWT
+
+[공식문서](https://jwt.io/introduction)
+JWT는 Json Web Token의 약자로 Json을 이용해 정보를 안전하게 다루기 위한 개방형 표준 (RFC 7519) 방법입니다.<br/>
+내용들은 Claim들로 이루어 지는데, 각 Claim들은 Json처럼 이름과 값의 쌍으로 이루어져 있습니다.<br/>
+예를 들면 Claim의 이름이 name이면 값은 유영진이 될 수 있습니다.<br/>
+이 Claim들을 이용해서 필요한 데이터들을 Json 형태로 담아 토큰으로 변경합니다.
+
+## Base64Url
+
+Base64 인코딩은 `+`, `/`, `=`이 포함됩니다.<br/>
+Base64는 2진 데이터를 6bit 단위로 쪼개고 해당 문자열을 ASCII 값으로 치환해주는데 `+`는 62, `/`는 63에 해당합니다.<br/>
+또한 Base64는 3byte씩 쪼개서 인코딩을 하는데 이 때 3byte가 안되는 경우에는 padding 문자열로 빈 공간을 채우게 됩니다.<br/>
+여기서 Base64는 `=`을 padding문자열로 사용합니다.<br/>
+따라서 URI의 파라미터로 사용할 수 없게 되는데, JWT는 토큰값을 URI 파라미터로 사용할 수 있도록 Base64Url 인코딩을 사용합니다.<br/>
+Base64Url에서는 `-`(minus)는 62, `_`(underline)은 63에 해당합니다.<br/>
+하지만 padding문자열은 그대로 `=`을 사용합니다.<br/>
+그 이유는 패딩 문자열은 문자열 맨 마지막에 존재하게 되니 브라우저가 제어문자로 인식하지 않고 그냥 문자로 인식하기 때문입니다.
+
+## 구조
+
+JWT의 구조는 3개의 파트로 나뉘고, 각 파트는 점으로 구분합니다.<br/>
+
+-	Header
+-	Payload
+-	Signature
+
+따라서 JWT는 아래와 같은 모습이 됩니다.<br/>
+`xxxxx.yyyyy.zzzzz`
+
+### Header
+
+헤더(Header)는 토큰의 타입과 알고리즘 2가지로 구성되어 있습니다.<br/>
+토큰의 타입은 JWT, 알고리즘은 HMAC이나 SHA256, RSA같은 알고리즘으로 들어갑니다.
+
+```json
+{
+	"alg": "HS256",
+	"typ": "JWT"
+}
+```
+
+### Payload
+
+페이로드(Payload)는 토큰에 담을 클레임(Claim)들을 담는 부분입니다.<br/>
+클레임의 종류는 아래 3가지가 있습니다.
+
+#### Registered claims(등록된 클레임)
+
+필수는 아니지만 유용하고 상호 작용이 가능한 클레임들이 미리 정의되어 있습니다.<br/>
+해당 클레임들을 등록된 클레임 부분에 정의해줍니다.<br/>
+[등록된 클레임 종류](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1)
+
+-	iss
+
+	iss는 발급자(issuer) 클레임 입니다.<br/>
+	보통은 어플리케이션에 따라 어플리케이션 이름이나 URI등을 넣습니다.<br/>
+	문자열을 값으로 가집니다.
+
+-	sub
+
+	sub는 주제(Subject) 클레임 입니다.<br/>
+	주제 클레임값은 지역적이나 전역적으로 고유한 값을 가집니다.<br/>
+	문자열을 값으로 가집니다.
+
+-	aud
+
+	aud는 수신자(audience) 클레임 입니다.<br/>
+	수신자 클레임은 JWT가 의도한 수신자인지를 식별합니다.<br/>
+	해당 클레임으로 의도한 수신자가 아닐경우 JWT를 거부할 수 있습니다.<br/>
+	aud에는 단일 문자열이나 혹은 문자열 배열이 들어올 수 있습니다.
+
+-	exp
+
+	exp는 만료 시간(Expiration Time) 클레임 입니다.<br/>
+	JWT가 만료되는 시간을 설정할 수 있습니다.<br/>
+	exp시간이 현재시간보다 지나게 되면 JWT를 거부합니다.<br/>
+	시간은 NumericDate형식으로 `1480849147370`같이 지정합니다.
+
+-	nbf
+
+	nbf는 Not Before클레임 입니다.<br/>
+	JWT가 처리되면 안되는 이전 시간을 설정할 수 있습니다.<br/>
+	nbf시간이 현재시간보다 더 크면 JWT를 거부합니다.<br/>
+	마찬가지로 NumericDate형식으로 지정합니다.
+
+-	iat
+
+	iat는 발급 시간(Issued At)클레임 입니다.<br/>
+	JWT가 발급되는 시간을 식별합니다.<br/>
+	이 클레임으로 JWT의 수명을 결정할 수 있습니다.<br/>
+	마찬가지로 NumericDate형식으로 지정합니다.
+
+-	jti
+
+	jti는 JWT ID 클레임 입니다.<br/>
+	해당 클레임은 JWT에 고유 ID를 제공합니다.<br/>
+	해당 클레임을 사용할 때 각 JWT는 겹치지 않는 고유한 ID값을 가지도록 방지해야 합니다.<br/>
+	ID값ㅇ로 구분하여 JWT를 거부할 수 도 있습니다.<br/>
+	문자열을 값으로 가집니다.
+
+#### Public claims(공개 클레임)
+
+공개 클레임은 사용자들이 클레임을 마음대로 정의하면서 사용할 수 있습니다.<br/>
+하지만 충돌을 방지하고자 [IANA JSON Web Token Registry](https://www.iana.org/assignments/jwt/jwt.xhtml)에 등록된 이름으로 사용하거나, 혹은 해당 이름을 포함한 URI로 정의해야 합니다.
+
+#### Private claims(비공개 클레임)
+
+비공개 클레임은 사용자들 간에 협의하에 사용하는 사용자 정의 클레임 입니다.
+
+```json
+{
+	"sub": "1234567890",
+	"name": "John Doe",
+	"admin": true
+}
+```
+
+위의 페이로드에선 sub는 지정된 클레임, name은 공개 클레임, admin은 비공개 클레임에 해당합니다.
+
+### Signature
+
+서명(Signature)부분은 헤더에 지정된 알고리즘을 가져와서 그 알고리즘에 맞게 서명해야 합니다.<br/>
+서명은 헤더의 인코딩값과 정보의 인코딩값을 합친 후 주어진 비밀키로 해쉬를 하여 생성합니다.<br/>
+예르들어 HMAC SHA256 알고리즘을 사용한 경우는 아래와 같이 만들어집니다.<br/>
+`HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secret)`<br/>
+서명은 도중에 메시지가 변경되었는지 확인하는데 사용하며, 개인 키로 서명된 토큰의 경우는 JWT 발신자를 확인할 수 있습니다.
+
+## 결과
+
+결과로는 페이로드가 인코딩되고 암호로 서명된 JWT가 생성됩니다.
+![jwt-result size:800*400](/front-end/jwt-result.png)
+위의 이미지처럼 JWT는 Encode됩니다.<br/>
+[jwt debug](https://jwt.io/) 해당 페이지로부터 직접 JWT의 encode, decode 결과를 볼 수 있습니다.
+
