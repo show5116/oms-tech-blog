@@ -29,7 +29,7 @@ const Seo = React.memo(({ title, description, keywords, thumbnail = '/images/def
             <meta property="og:description" content={description} />
             <meta property="og:site_name" content="OMS 개발블로그" />
             <meta property="og:locale" content="ko_KR" />
-            <meta property="og:image" content={thumbnail} />
+            <meta property="og:image" content={site + thumbnail} />
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
 
@@ -42,7 +42,7 @@ const Seo = React.memo(({ title, description, keywords, thumbnail = '/images/def
             <meta name="twitter:description" content={description} />
             <meta name="twitter:site" content="OMS 개발블로그" />
             <meta name="twitter:url" content={site + router.asPath} />
-            <meta name="twitter:image" content={thumbnail} />
+            <meta name="twitter:image" content={site + thumbnail} />
         </Head>
     );
 }, compareProps);
