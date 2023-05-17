@@ -3,12 +3,14 @@ import * as S from 'styles/pages/about.style';
 import Seo from 'components/layout/Seo';
 import Link from 'next/link';
 
-const description = 'OMS-Tech-Blog는 OMS 프로젝트에서 필요한 기술정보를 공유하는 블로그입니다.';
-
 const About = () => {
     return (
         <>
-            <Seo title="About" description={description} keywords={['기술블로그']} />
+            <Seo
+                title="About"
+                description="OMS-Tech-Blog는 OMS 프로젝트에서 필요한 기술정보를 공유하는 블로그입니다."
+                keywords={['기술블로그']}
+            />
             <S.Container>
                 <S.Title>About OMS-Tech-Blog</S.Title>
                 <S.Content>
