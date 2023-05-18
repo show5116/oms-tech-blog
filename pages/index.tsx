@@ -1,4 +1,4 @@
-import Seo from 'components/layout/Seo';
+import { NextSeo } from 'next-seo';
 import SamplePosts from 'components/organisms/SamplePosts';
 import Tags from 'components/organisms/Tags';
 import * as S from 'styles/pages/index.style';
@@ -10,12 +10,12 @@ import { useEffect, useState } from 'react';
 interface IProps {
     posts: IPost[];
     tags: ITag[];
+    tagNames: string;
 }
 
-const Home = ({ posts, tags }: IProps) => {
+const Home = ({ posts, tags, tagNames }: IProps) => {
     const [filteredPosts, setFilteredPosts] = useState<IPost[]>([]);
     const [currentTag, setCurrentTag] = useState('');
-    const tagNames = tags.map((tag) => tag.name);
 
     useEffect(() => {
         const URLSearch = new URLSearchParams(location.search);
@@ -33,7 +33,14 @@ const Home = ({ posts, tags }: IProps) => {
 
     return (
         <>
-            <Seo description={'OMS의 기술 블로그입니다.'} keywords={tagNames} />
+            <NextSeo
+                additionalMetaTags={[
+                    {
+                        name: 'keywords',
+                        content: tagNames,
+                    },
+                ]}
+            />
             <S.Container>
                 <Tags tags={tags} isCategory={true} allLength={posts.length} currentTag={currentTag} />
                 <SamplePosts posts={filteredPosts} />
@@ -58,10 +65,14 @@ export const getStaticProps = async () => {
                 }
             });
         });
+
+    const tagNames = tags.map((tag) => tag.name).join(', ');
+
     return {
         props: {
             posts,
             tags,
+            tagNames,
         },
     };
 };

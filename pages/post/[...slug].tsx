@@ -1,6 +1,6 @@
 import { getAllPost, getPost } from 'utils/mdxUtils';
 
-import Seo from 'components/layout/Seo';
+import { NextSeo } from 'next-seo';
 import Toc from 'components/organisms/Toc';
 import PostTemplate from 'components/templates/PostTemplate';
 import Code from 'components/mdxprovider/Code';
@@ -23,13 +23,28 @@ interface IProps {
     mdxSource: MDXRemoteSerializeResult;
     frontMatter: IFrontMatter;
     content: string;
+    title: string;
+    description: string;
+    thumbnailUrl: string;
+    tagNames: string;
 }
 
-const Post = ({ mdxSource, frontMatter, content }: IProps) => {
-    const { title, description, thumbnail, tags } = frontMatter;
+const Post = ({ mdxSource, frontMatter, content, title, description, thumbnailUrl, tagNames }: IProps) => {
     return (
         <>
-            <Seo title={title} description={description} keywords={tags} thumbnail={thumbnail} />
+            <NextSeo
+                title={title + ' | OMS 기술블로그'}
+                description={description}
+                additionalMetaTags={[
+                    {
+                        name: 'keywords',
+                        content: tagNames,
+                    },
+                ]}
+                openGraph={{
+                    images: [{ url: thumbnailUrl }],
+                }}
+            />
             <Toc content={content} />
             <MDXProvider components={components}>
                 <PostTemplate mdxSource={mdxSource} frontMatter={frontMatter} content={content} />
@@ -40,11 +55,19 @@ const Post = ({ mdxSource, frontMatter, content }: IProps) => {
 
 export const getStaticProps = async ({ params }) => {
     const { mdxSource, data, content } = await getPost(params.slug);
+    const { title, description, thumbnail, tags } = data;
+    const thumbnailUrl = 'https://oms-tech-blog.netlify.app' + thumbnail;
+    const tagNames = tags.map((tag) => tag.name).join(', ');
+
     return {
         props: {
             mdxSource,
             frontMatter: data,
             content,
+            title,
+            description,
+            thumbnailUrl,
+            tagNames,
         },
     };
 };

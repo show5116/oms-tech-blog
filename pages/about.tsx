@@ -1,16 +1,12 @@
 import * as S from 'styles/pages/about.style';
 
-import Seo from 'components/layout/Seo';
+import { NextSeo } from 'next-seo';
 import Link from 'next/link';
 
-const About = () => {
+const About = ({ title }) => {
     return (
         <>
-            <Seo
-                title="About"
-                description="OMS-Tech-Blog는 OMS 프로젝트에서 필요한 기술정보를 공유하는 블로그입니다."
-                keywords={['기술블로그']}
-            />
+            <NextSeo title={title + ' | OMS 기술블로그'} />
             <S.Container>
                 <S.Title>About OMS-Tech-Blog</S.Title>
                 <S.Content>
@@ -33,6 +29,14 @@ const About = () => {
             <S.Footer>show5116</S.Footer>
         </>
     );
+};
+
+export const getStaticProps = async () => {
+    return {
+        props: {
+            title: 'About',
+        },
+    };
 };
 
 export default About;

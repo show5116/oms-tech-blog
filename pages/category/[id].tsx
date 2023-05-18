@@ -7,18 +7,19 @@ import { useEffect, useState } from 'react';
 import { getAllCategories, getPostByCategory } from 'utils/mdxUtils';
 
 import { IPost, ITag } from 'types';
-import Seo from 'components/layout/Seo';
+import { NextSeo } from 'next-seo';
 
 interface IProps {
     category: string;
+    description: string;
     posts: IPost[];
     tags: ITag[];
+    tagNames: string;
 }
 
-const Category = ({ category, posts, tags }: IProps) => {
+const Category = ({ category, description, posts, tags, tagNames }: IProps) => {
     const [filteredPosts, setFilteredPosts] = useState<IPost[]>([]);
     const [currentTag, setCurrentTag] = useState('');
-    const tagNames = tags.map((tag) => tag.name);
 
     useEffect(() => {
         const URLSearch = new URLSearchParams(location.search);
@@ -36,10 +37,15 @@ const Category = ({ category, posts, tags }: IProps) => {
 
     return (
         <>
-            <Seo
-                title={category}
-                description={`OMS의 ${category}에 대한 내용 공유 페이지입니다.`}
-                keywords={tagNames}
+            <NextSeo
+                title={category + ' | OMS 기술블로그'}
+                description={description}
+                additionalMetaTags={[
+                    {
+                        name: 'keywords',
+                        content: tagNames,
+                    },
+                ]}
             />
             <S.Container>
                 <Tags tags={tags} isCategory={true} allLength={posts.length} currentTag={currentTag} />
@@ -51,6 +57,7 @@ const Category = ({ category, posts, tags }: IProps) => {
 
 export const getStaticProps = async ({ params }) => {
     const category = params.id;
+    const description = `OMS의 ${category}에 대한 내용 공유 페이지입니다.`;
     const posts = getPostByCategory(category);
 
     const tags: ITag[] = [];
@@ -66,11 +73,15 @@ export const getStaticProps = async ({ params }) => {
                 }
             });
         });
+    const tagNames = tags.map((tag) => tag.name).join(', ');
+
     return {
         props: {
             category,
+            description,
             posts,
             tags,
+            tagNames,
         },
     };
 };
