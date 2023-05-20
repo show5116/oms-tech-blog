@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface IProps {
     children: string | JSX.Element;
@@ -7,6 +8,12 @@ interface IProps {
 }
 
 const A = ({ children, href, download }: IProps) => {
+    const [site, setSite] = useState('');
+
+    useEffect(() => {
+        setSite((prev) => location.pathname);
+    }, []);
+
     const renderChildren = () => {
         if (typeof children === 'string') {
             return <span className="underline">{children}</span>;
@@ -22,7 +29,7 @@ const A = ({ children, href, download }: IProps) => {
     if (href.startsWith('/') && !download) {
         return <Link href={href}>{renderChildren()}</Link>;
     } else if (href.startsWith('#')) {
-        return <Link href={location.pathname + convertTextToId(href)}>{renderChildren()}</Link>;
+        return <Link href={site + convertTextToId(href)}>{renderChildren()}</Link>;
     } else if (download) {
         return (
             <a href={href} download={download}>
