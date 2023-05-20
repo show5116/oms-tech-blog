@@ -6,11 +6,12 @@ import PostTemplate from 'components/templates/PostTemplate';
 import Code from 'components/mdxprovider/Code';
 import ResponsiveImage from 'components/mdxprovider/ResponsiveImage';
 import A from 'components/mdxprovider/A';
+import Strong from 'components/mdxprovider/Strong';
 import { MDXProvider } from '@mdx-js/react';
 
 import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { IFrontMatter } from 'types';
-import Strong from 'components/mdxprovider/Strong';
+import { defaultImageUrl, siteTitle, siteUrl } from '../../seo.config';
 
 const components = {
     code: Code,
@@ -20,6 +21,7 @@ const components = {
 };
 
 interface IProps {
+    slug: string;
     mdxSource: MDXRemoteSerializeResult;
     frontMatter: IFrontMatter;
     content: string;
@@ -29,12 +31,13 @@ interface IProps {
     tagNames: string;
 }
 
-const Post = ({ mdxSource, frontMatter, content, title, description, thumbnailUrl, tagNames }: IProps) => {
+const Post = ({ slug, mdxSource, frontMatter, content, title, description, thumbnailUrl, tagNames }: IProps) => {
     return (
         <>
             <NextSeo
-                title={title + ' | OMS 기술블로그'}
+                title={title + ' | ' + siteTitle}
                 description={description}
+                canonical={siteUrl + '/post/' + slug}
                 additionalMetaTags={[
                     {
                         name: 'keywords',
@@ -42,6 +45,9 @@ const Post = ({ mdxSource, frontMatter, content, title, description, thumbnailUr
                     },
                 ]}
                 openGraph={{
+                    title: title + ' | ' + siteTitle,
+                    description: description,
+                    url: siteUrl + '/post/' + slug,
                     images: [{ url: thumbnailUrl }],
                 }}
             />
@@ -54,13 +60,15 @@ const Post = ({ mdxSource, frontMatter, content, title, description, thumbnailUr
 };
 
 export const getStaticProps = async ({ params }) => {
+    const slug = params.slug.join('/');
     const { mdxSource, data, content } = await getPost(params.slug);
     const { title, description, thumbnail, tags } = data;
-    const thumbnailUrl = 'https://oms-tech-blog.netlify.app' + thumbnail;
+    const thumbnailUrl = thumbnail ? siteUrl + thumbnail : defaultImageUrl;
     const tagNames = tags.map((tag) => tag.name).join(', ');
 
     return {
         props: {
+            slug,
             mdxSource,
             frontMatter: data,
             content,

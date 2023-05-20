@@ -3,10 +3,16 @@ import * as S from 'styles/pages/about.style';
 import { NextSeo } from 'next-seo';
 import Link from 'next/link';
 
+import { siteTitle, siteUrl } from '../seo.config';
+
 const About = ({ title }) => {
     return (
         <>
-            <NextSeo title={title + ' | OMS 기술블로그'} />
+            <NextSeo
+                title={title + ' | ' + siteTitle}
+                canonical={siteUrl + '/about'}
+                openGraph={{ title: title + ' | ' + siteTitle, url: siteUrl + '/about' }}
+            />
             <S.Container>
                 <S.Title>About OMS-Tech-Blog</S.Title>
                 <S.Content>

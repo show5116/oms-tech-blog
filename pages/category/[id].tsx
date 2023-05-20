@@ -2,12 +2,13 @@ import * as S from 'styles/pages/category.style';
 
 import Tags from 'components/organisms/Tags';
 import SamplePosts from 'components/organisms/SamplePosts';
-import { useEffect, useState } from 'react';
+import { NextSeo } from 'next-seo';
 
+import { useEffect, useState } from 'react';
 import { getAllCategories, getPostByCategory } from 'utils/mdxUtils';
 
 import { IPost, ITag } from 'types';
-import { NextSeo } from 'next-seo';
+import { siteTitle, siteUrl } from '../../seo.config';
 
 interface IProps {
     category: string;
@@ -38,14 +39,20 @@ const Category = ({ category, description, posts, tags, tagNames }: IProps) => {
     return (
         <>
             <NextSeo
-                title={category + ' | OMS 기술블로그'}
+                title={category + ' | ' + siteTitle}
                 description={description}
+                canonical={siteUrl + '/category/' + category}
                 additionalMetaTags={[
                     {
                         name: 'keywords',
                         content: tagNames,
                     },
                 ]}
+                openGraph={{
+                    title: category + ' | ' + siteTitle,
+                    description: description,
+                    url: siteUrl + '/category/' + category,
+                }}
             />
             <S.Container>
                 <Tags tags={tags} isCategory={true} allLength={posts.length} currentTag={currentTag} />
