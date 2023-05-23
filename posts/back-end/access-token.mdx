@@ -26,22 +26,43 @@ jjwt를 활용해서 JWT를 생성하거나 혹은 분석할 수 있습니다.
 
 ## 로그인 구현
 
+### controller
+
+로그인 컨트롤러를 구현합니다.<br/>
+화면단에서 넘어오는 requestBody와 추후에 refresh-token 파트에서 사용할 HttpServletRequest를 받아와줍니다.
+
 ```java
-// Controller
 @RestController
 @RequiredArgsConstructor
 public class UserController {
 	private final UserService userService;
 
 	@PostMapping("/auth/sign/in")
-	public ResponseEntity<SignInResponse> signIn(HttpServlet request, @RequestBody SignInRequest requestBody) {
+	public ResponseEntity<SignInResponse> signIn(HttpServletRequest request, @RequestBody SignInRequest requestBody) {
 		return ResponseEntity.ok(signService.signIn(request, requestBody));
 	}
 }
 ```
+### requestDto
+
+requestDto에는 로그인시에 입력하는 아이디와 비밀번호가 포함되어 있습니다.
 
 ```java
-// SignResponse
+@Getter
+@AllArgsConstructor
+public class SignInRequest {
+	private String id;
+
+	private String password;
+}
+```
+
+### responseDto
+
+responseDto에는 프론트엔드로 보내줄 token값과, 상태관리에서 사용할 멤버 이름이나 아이디, 권한 등을 보내줄 수 있습니다.<br/>
+해당 데이터들은 Redux와 같은 상태 관리를 통해 클라이언트에서 사용이 가능합니다.
+
+```java
 @NoArgsConstructor
 @AllArgsConstructor(access = Accesslevel.PRIVATE)
 @Builder
@@ -53,19 +74,11 @@ public class SignInResponse {
 }
 ```
 
-SignInResponse에는 프론트엔드로 보내줄 token값과, 상태관리에서 사용할 멤버 이름이나 아이디, 권한 등을 보내줄 수 있습니다.<br/>
-해당 데이터들은 Redux와 같은 상태 관리를 통해 클라이언트에서 사용이 가능합니다.
+### Service
 
-```java
-// SignInRequest
-@Getter
-@AllArgsConstructor
-public class SignInRequest {
-	private String id;
+서비스에서는 [decrypt과정](/post/front-end/aes)을 통해 암호를 해독하여 일치하는지 확인합니다.<br/>
+그 후 access token을 만들어 보내줍니다.<br/>
 
-	private String password;
-}
-```
 ```java
 @Service
 @RequiredArgsConstructor
@@ -87,8 +100,6 @@ public class SignService {
 
 		String accessToken = jwtUtil.createAccessToken();
 
-		//String requestIp = WebHelper.getIpAddress(request);
-
 		logger.info("{} login success", requestBody.getId());
 
 		return SignInResponse.builder()
@@ -98,8 +109,13 @@ public class SignService {
 }
 ```
 
-서비스에서는 [decrypt과정](/post/front-end/aes)을 통해 암호를 해독하여 일치하는지 확인합니다.<br/>
-그 후 access token을 만들어 보내줍니다.
+### JwtUtil
+
+JWT를 생성할 때는 어플리케이션의 성격에 맞게 claim값들을 설정할 수 있습니다.<br/>
+등록된 클레임(Registered Claim)은 Jwts객체에 setter가 존재하여 이를 통해 설정할 수 있습니다.<br/>
+만료 시간(Expiration Time) 클레임은 설정해주어서 만료 시간이 지날 경우 토큰이 폐기되도록 하는 것이 좋습니다.<br/>
+jwtUtil에서는 이들을 통해 access-token을 생성해줍니다.<br/>
+Map<String, Object> 의 형태로 body claim을 넣어줄 수 있습니다.
 
 ```java
 @Component
@@ -133,8 +149,19 @@ public class JwtUtil {
 }
 ```
 
+### enum
+
+공캐 클레임(Public Claim)이나 비공개 클레임(Private Claim)들은 enum등을 활용해서 구현 할 수 있습니다.<br/>
+TokenField interface를 이용하면 Claim을 parse하거나 set해줄 때 TokenField 타입을 활용할 수 있습니다.
+
 ```java
-public enum PublicClaimKey {
+public interface TokenField {
+	String getValue();
+}
+```
+
+```java
+public enum PublicClaimKey implements TokenField {
 	NAME("name"),
 	NICKNAME("nickname");
 
@@ -151,7 +178,7 @@ public enum PublicClaimKey {
 ```
 
 ```java
-public enum PrivateClaimKey {
+public enum PrivateClaimKey implements TokenField {
 	USER_ID("userId");
 
 	private String value;
@@ -166,9 +193,5 @@ public enum PrivateClaimKey {
 }
 ```
 
-JWT를 생성할 때는 어플리케이션의 성격에 맞게 claim값들을 설정할 수 있습니다.<br/>
-공캐 클레임(Public Claim)이나 비공개 클레임(Private Claim)들은 enum등을 활용해서 위와 같이 줄 수 있습니다.<br/>
-등록된 클레임(Registered Claim)은 Jwts객체에 setter가 존재하여 이를 통해 설정할 수 있습니다.<br/>
-만료 시간(Expiration Time) 클레임은 설정해주어서 만료 시간이 지날 경우 토큰이 폐기되도록 하는 것이 좋습니다.<br/><br/>
 원래 refresh token 발급 까지 설명하고 구현하려 하였으나 생각보다 양이 많아져서 한번 더 나누게 되었습니다.<br/>
 다음 포스터에서는 access token의 한계점과 refresh token에 대해서 설명하고 구현하도록 하겠습니다.
