@@ -1,0 +1,388 @@
+---
+title: 'JWT Refresh Token 구현'
+date: '2023-05-24'
+description: 'JWT를 활용하여 refresh token을 구현하고 보안을 강화합니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JWT', 'MSA']
+---
+
+[JWT 로그인 방식 구현 포스트](/post/back-end/access-token)에선 access token을 발급받는 과정까지 구현하였습니다.<br/>
+하지만 access token 하나만 가지고는 보안에서 한계가 존재하는데 이를 refresh token으로 극복할 수 있습니다.
+
+## refresh token
+
+JWT는 무상태(Stateless) 방식을 사용합니다.<br/>
+즉 서버가 클라이언트의 상태를 보존하지 않게 되는데, JWT가 만약 탈취당할 경우 서버는 이를 알지 못합니다.<br/>
+즉 누군가에게 토큰을 탈취당하면 아이디 비밀번호를 모르더라도 서비스를 제약 없이 사용할 수 있게 됩니다.<br/><br/>
+
+refresh token이란 이런 단점을 보안하기 위해 새로운 하나의 토큰을 더 사용하는 것입니다.<br/>
+access token의 유효시간을 짧게 하고, 이 유효기간이 지날 경우에는 refresh token을 이용해서 새로운 access token을 발급하여 사용할 수 있게 합니다.<br/>
+즉 refresh token의 유효기간은 로그인 유지 시간이 되고, access token은 그 시간 내에 OTP처럼 계속해서 발급받는 토큰이 됩니다.
+
+## refresh token의 탈취
+
+하지만 refresh token도 마찬가지로 탈취당하면 위험합니다.<br/>
+탈취한 refresh token을 이용해서 새로운 access token을 발급받을 수 있고, 새로이 발급받은 access token으로 서비스를 이용할 수 있습니다.<br/>
+결국 access token 하나만 사용할 때와 마찬가지로 탈취당하게 된다면 refresh token을 사용한 의미가 없게 될 수 있습니다.<br/>
+그래서 이러한 현상을 막기 위해 refresh token에는 새로운 접근이 필요합니다.
+
+### 서버에서 refresh token을 관리
+
+refresh token을 발급하고 서버의 로직으로 이를 관리합니다.<br/>
+하지만 서버가 클라이언트의 상태를 가지게 되므로 더이상 무상태(Stateless)가 아니게 됩니다.<br/>
+서버에서 refresh token을 관리하는 방법으로는 세션을 이용하거나 데이터베이스를 이용합니다.<br/>
+세션의 경우에는 사용자가 많아질수록 부담이 심해지고 관리가 힘들어집니다.<br/>
+거기에 더불어 무상태(Stateless)에서 완전하게 벗어나게 되므로 JWT를 사용하는 이점을 잃게 됩니다.<br/>
+따라서 데이터베이스를 사용하는 것이 더 좋다 생각합니다.<br/>
+이 또한 무상태(Stateless)는 벗어나지만 적어도 access token의 유지 시간동안은 서버의 접근을 필요로 하지 않기 때문에 어느정도는 포기하지 않을 수 있습니다.
+
+-	access token 저장 위치
+
+access token은 탈취당할 경우 유지시간이 짧더라도 그 시간동안은 서비스를 이용할 수 있습니다.<br/>
+javascript의 비공개(private) 변수를 이용하면 가장 안전하게 지킬 수 잇습니다.<br/>
+비공개 변수에는 공격자가 접근할 방법이 없으니 XSS나 CSRF 공격으로부터 자유롭습니다.<br/>
+하지만 javascript의 변수라서 단점이 존재하는데, 페이지 이동이나 새로고침을 하게 되면 해당 변수는 사라지게 됩니다.<br/>
+따라서 페이지에 접근할 때 access token을 새로 발급받는 로직을 추가해야 합니다.
+React 프레임워크처럼 CSR만 사용한다면 그나마 덜하지만 Next 프레임워크처럼 SSR을 사용한다면 access token을 자주 재발급 받게 될 수 도 있습니다.
+
+-	refresh token 저장 위치
+
+refresh token을 저장할 수 있는 저장소의 종류는 3가지가 있습니다.<br/>
+로컬 스토리지(Local Storage)와 세션 스토리지(Session Storage) 그리고 쿠키(Cookie)가 있습니다.<br/>
+`로컬 스토리지`와 `세션 스토리지`는 둘 다 자바스크립트로 저장하고 가져올 수 있습니다.<br/>
+따라서 XSS공격을 통해 토큰을 탈취당할 가능성이 존재합니다.<br/>
+이 둘은 둘다 새로고침이나 페이지 이동에도 저장소가 유지되나, 세션 스토리지는 새로운 탭으로 열릴 경우 저장소를 공유하지 않습니다.<br/><br/>
+`쿠키`의 경우에는 자바스크립트로도 접근이 가능하고, 서버로부터 접근도 가능하여서 XSS공격과 CSRF공격에 모두 취약합니다.<br/>
+그래도 쿠키는 이러한 공격으로부터 비교적 안전하게 사용할 수 있는 옵션들이 존재합니다.<br/>
+`HttpOnly`가 true일 경우 쿠키는 자바스크립트로 접근이 불가능하게 되어 XSS로부터 비교적 안전합니다.<br/>
+`Secure`옵션은 Https로만 쿠키가 전해지기 때문에 Https설정을 할 경우에 안전해집니다.<br/>
+`SameSite`옵션은 크로스 사이트(Cross-site)로 전송하는 요청에 대하여 쿠키를 제한합니다.<br/>
+SameSite옵션은 Strict모드와 Lax모드가 있습니다.<br/>
+`Strict`모드는 같은 도메인 범위에서만 해당 쿠키를 사용하게 되며, `Lax`모드는 기본적으로 Strict모드와 비슷하나 사용자가 페이지 이동이나 혹은 Form을 통한 Get 요청시에는 크로스 사이트에도 사용합니다.<br/>
+SameSite옵션을 활용하면 CSRF공격으로 부터 어느정도 안전하게 됩니다.<br/><br/>
+결론으로는 access token을 private 변수에 사용하게 될 경우 그리고 후술할 RTR방식까지 사용하게 될 경우 access token은 탈취 불가능해지고 refresh token만 탈취해서는 할 수 있는 것이 없게 됩니다.<br/>
+비교적 쿠키가 안전하다고는 하나 쿠키도 공격자들이 마음만 먹으면 XSS나 CSRF공격을 완전하게 막을 순 없습니다.<br/>
+따라서 개인적으로는 저장소는 선택의 영역이라 생각합니다.
+
+-	access token 유지 시간
+
+access token의 유지 시간은 짧으면 짧을수록 보안이 강화됩니다.<br/>
+하지만 그만큼 서버에 접근하는 횟수가 많아지기 때문에 사용자가 많을수록 부담이 될 가능성이 있습니다.<br/>
+짧으면 분단위, 길면 시간단위로 설정합니다.
+
+-	refresh token 유지 시간
+
+refresh token도 마찬가지로 유지 시간이 짧을수록 보안은 강화됩니다.<br/>
+하지만 유지시간은 곧 로그인 유지시간이니 짧으면 짧을수록 사용자들이 UX적으로 불편함을 느낄 수 있습니다.<br/>
+시간단위나 날짜단위로 설정합니다.
+
+### Refresh Token Rotation(RTR)
+
+데이터베이스에 refresh token과 access token을 1:1로 설계합니다.<br/>
+그러면서 refresh token과 access token이 1:1이 되기에 refresh token도 1회용으로만 사용이 가능해집니다.<br/>
+새로운 access token을 발급받을 때 동시에 refresh token도 발급받음으로서 기존의 refresh token은 폐기합니다.<br/>
+이 과정을 `Refresh Token Rotation`이라고 합니다.<br/>
+만약 누군가가 refresh token을 탈취하더라도 사용 전에 refresh token이 이미 발급되면 사용이 불가능해집니다.<br/>
+또한 refresh token을 탈취 당하더라도 access token이 같이 탈취 당하지 않는 이상 사용이 불가하고, 혹여나 둘다 탈취당했다 하더라도 기존 사용자의 refresh token이 폐기 됨으로써 기존 사용자가 재발급을 요청할 경우 토큰이 유출되었음을 감지할 수 있게 됩니다.
+
+-	IP 정보와 함께 사용
+
+사용자의 IP를 받아서 데이터베이스에 같이 저장합니다.<br/>
+토큰의 유효성을 검사할 때 IP정보도 확인함으로서 조금 더 안전하게 사용이 가능합니다.
+
+-	로그인 유지 시간 갱신
+
+RTR방식을 사용할 경우 refresh token을 재생성 할 때 마다 만료 시간 클레임을 다시 정해줄 수 있습니다.<br/>
+그에 따라 refresh token 재발급 할 때 마다 계솏해서 새로운 만료 시간을 줄 수도 있고, 혹은 초기의 만료시간을 다시 주면서 처음 로그인 시 기준으로 만료시간을 정해줄 수도 있습니다.
+
+## 구현
+
+위에서 서술한 방식을 토대로 구현해보도록 하겠습니다.<br/>
+refresh token은 쿠키에 저장할 경우에는 서버쪽 코드에서 저장해야하고, 로컬 스토리지에 저장할 경우에는 자바스크립트 코드에서 저장해야 합니다.<br/>
+저는 실제로 자바스크립트 코드로 구현하여서 서버쪽에선 respnose에 추가해주었습니다.
+
+### 엔티티
+
+```java
+@Entity
+@Table(name = "token")
+@NoArgsConstructor(access = Accesslevel.PROTECTED)
+@AllArgsConstructor(access = Accesslevel.PRIVATE)
+@Builder
+@Getter
+public class Token {
+	@Id
+	@Column(name = "user_id")
+	private String id;
+
+	@Column(name = "access_token")
+	private String accessToken;
+
+	@Column(name = "refresh_token")
+	private String refreshToken;
+
+	@Column(name = "ip_address")
+	private String ipAddress;
+
+	@OneToOne
+	@MapsId
+	@JoinColumn(name = "user_id")
+	private User user;
+
+	public void updateUser(User user) {
+		this.userId = user.getId();
+		this.user = user;
+	}
+}
+```
+
+```java
+@Entity
+@Table(name = "users")
+@NoArgsConstructor(access = Accesslevel.PROTECTED)
+@AllArgsConstructor(access = Accesslevel.PRIVATE)
+@Builder
+@Getter
+public class User {
+	@Id
+	@Column(name = "user_id")
+	private String id;
+
+	@Column(name = "password")
+	private String password;
+
+	@Column(name = "user_name")
+	private String name;
+
+	@OneToOne(cascade = CascadeType.ALL, mappedBy = "user")
+	@PrimaryKeyJoinColumn
+	private User user;
+
+	public void updateToken(Token token) {
+		this.token = token;
+	}
+}
+```
+
+### controller
+
+refreshToken을 이용해 새로운 accessToken을 발급받을 로직을 추가해줍니다.<br/>
+@RequestMapping 의 Method를 지정하지 않아서 Get, Post, Delete 등 어떠한 Method로 넘어오더라도 발급이 가능하도록 합니다.<br/>
+이렇게 한 이유는 API-Gateway에서 access-token 인증에 실패할 경우 API 주소만을 변경해주기 때문에 기존의 Method방식으로 그대로 넘어오기 때문입니다.<br/>
+그러면 화면에서는 사용자가 눈치채지 않게끔 access-token을 자연스럽게 발급받을 수 있습니다.
+
+```java
+@RestController
+@RequiredArgsConstructor
+public class UserController {
+	private final UserService userService;
+
+	@PostMapping("/auth/sign/in")
+	public ResponseEntity<SignInResponse> signIn(HttpServlet request, @RequestBody SignInRequest requestBody) {
+		return ResponseEntity.ok(signService.signIn(request, requestBody));
+	}
+
+    @RequestMapping(value = "/auth/sign/refresh")
+    public ResponseEntity<SignResponse> refreshToken(
+	        HttpServletRequest request,
+	        @RequestHeader("Refresh-Token") String refreshToken
+    ) {
+	    return ResponseEntity.ok(signService.refreshToken(accessToken, refreshToken));
+    }
+}
+```
+
+```java
+// SignResponse
+@NoArgsConstructor
+@AllArgsConstructor(access = Accesslevel.PRIVATE)
+@Builder
+@Getter
+public class SignInResponse {
+	private String memberName;
+
+	// 기존의 token을 accessToken으로 수정
+	private String accessToken;
+
+	// 새로운 refreshToken 추가
+	private String refreshToken;
+}
+```
+
+### Service
+
+[JWT 로그인 방식 구현 포스트](/post/back-end/access-token)에서 구현한 로그인 로직에 refresh token도 발급하도록 수정하겠습니다.<br/>
+또한 refreshToken을 새로 발급받는 서비스를 구현합니다.<br/>
+IP주소가 다를경우 로그인을 차단하였지만, 서비스에 따라서 핸드폰 인증을 거치게 하는 방식으로 구현도 가능합니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class SignService {
+
+	private final Logger logger = (Logger) LoggerFactory.getLogger(this.getClass());
+	private static final String AUTH_TOKEN_HEADER_PREFIX = "Bearer ";
+
+	private final BCryptPasswordEncoder passwordEncoder;
+	private final JwtUtil jwtUtil;
+	private final UserRepository userRepository;
+	// 새롭게 Token Repository를 추가합니다.
+	private final TokenRepository tokenRepository;
+
+	@Transactional
+	public SignResponse signIn(HttpServletRequest request, SignInRequest requestBody) {
+		User loginUser = userDao
+			.findById(requestBody.getId())
+			.filter(user -> passwordEncoder.matches(AesCryptUtil.decrypt(requestBody.getPassword()), user.getPassword()));
+
+		String accessToken = jwtUtil.createAccessToken();
+		// refreshToken도 같이 발급해줍니다.
+		String refreshToken = jwtUtil.createRefreshToken(loginUser);
+
+		this.updateToken(loginUser, accessToken, refreshToken, request);
+
+		logger.info("{} login success", requestBody.getId());
+
+		return SignInResponse.builder()
+			.memberName(loginUser.getMemberName())
+			.accessToken(accessToken)
+			.refreshToken(refreshToken)
+            .build();
+	}
+
+    @Transactional
+	public SignResponse refreshToken(HttpServletRequest request, String refreshToken) throws Exception {
+        String subRefreshToken = refreshToken.subString(AUTH_TOKEN_HEADER_PREFIX.length());
+        // refreshToken이 만료될 시 여기서 Exception 발생
+        String userId = jwtUtil.getTokenField(subRefreshToken, PrivateClaimKey.USER_ID, String.class);
+
+		User loginUser = userRepository.findById(userId).orElseThrow();
+
+        if (loginUser.getToken() == null) {
+            // 무언가 잘못된 요청으로 refreshToken이 폐기될 경우 입니다.
+            throw new Exception("잘못된 요청 시도가 있었습니다. 본인이 아닐 시 문의 바랍니다.");
+        } else if (!refreshToken.equals(loginUser.getToken().getRefreshToken())) {
+            // 이미 폐기된 refreshToken을 통해 인증을 시도할 경우입니다.
+			tokenRepository.delete(loginUser.getToken());
+			throw new Exception("잘못된 인증 값입니다. 여러 매체에서 로그인 시도한 경우가 아닐 시 해킹 가능성이 있으니 확인 바랍니다.");
+		} else if (!WebHelper.getIpAddress(request).equals(loginUser.getToken().getIpAddress())) {
+		    // IP 주소가 처음 로그인 시도한 곳과 다를 경우입니다.
+            tokenRepository.delete(loginUser.getToken());
+			thorw new Exception("다른 IP주소에서 접근을 시도하셨습니다. 다시 로그인 해주세요.");
+		}
+
+        String newAcessToken = jwtUtil.createAcessToken(loginUser);
+		String newRefreshToken = jwtUtil.createRefreshToken(loginUser);
+
+		this.updateToken(loginUser, newAccessToken, newRefreshToken, request);
+
+        return SignInResponse.builder()
+			.memberName(loginUser.getMemberName())
+			.accessToken(newAcessToken)
+			.refreshToken(newRefreshToken)
+            .build();
+	}
+
+	public void updateToken(User user, String accessToken, String refreshToken, HttpServletRequest request) {
+		String ipAddress = WebHelper.getIpAddress(request);
+
+		if(user.getToken() != null) {
+			tokenRepository.delete(user.getToken());
+		}
+
+		Token token = Token.builder()
+			.accessToken(accessToken)
+			.refreshToken(refreshToken)
+			.ipAddress(ipAddress)
+			.build();
+
+		token.updateUser(user);
+		user.updateToken(token);
+
+		userRepository.save(user);
+		tokenRepository.save(token);
+	}
+}
+```
+
+### JwtUtil
+
+refresh Token을 발급할 메서드를 추가해줍니다.<br/>
+또한 TokenField interface를 활용하여서 특정 클레임을 parsing 하는 메서드를 만들었습니다.
+
+```java
+@Component
+public class JwtUtil {
+
+	@Value("${jwt.signKey}")
+	private String jwtSignKey;
+
+	public String createAccessToken() {
+		Map<String, Object> body = new HashMap<>();
+		body.put(PublicClaimKey.NAME.getValue(), user.getName());
+		body.put(PrivateClaimKey.USER_ID.getValue(), user.getId());
+
+		return this.createToken("accessToken", body, 30);
+	}
+
+    	public String createRefreshToken() {
+		Map<String, Object> body = new HashMap<>();
+		body.put(PublicClaimKey.NAME.getValue(), user.getName());
+		body.put(PrivateClaimKey.USER_ID.getValue(), user.getId());
+
+		return this.createToken("refreshToken", body, 60 * 24 * 2);
+	}
+
+	public String createToken(String subject, Map<String, Object> body, int expirationTime) {
+		LocalDateTime currentTime = LocalDateTime.now();
+
+		Claims claims = Jwts.claims(body);
+
+		return Jwts.builder()
+			.setClaims(claims)
+			.setSubject(subject)
+			.setIssuer("https://oms-tech-blog.netlify.app")
+			.setIssuedAt(Date.from(currentTime.atZone(ZoneId.systemDefault()).toInstant()))
+			.setExpiration(Date.from(currentTime.plusMinutes(expirationTime).atZone(ZoneId.systemDefault()).toInstant()))
+			.signWith(SignatureAlgorithm.HS512, jwtSignKey)
+			.compact();
+	}
+
+	public <T> T getTokenField(String token, TokenField tokenField, Class<T> type) {
+		return Jwts
+			.parser()
+			.setSigningKey(jwtSignKey)
+			.parseClaimsJws(token)
+			.getBody()
+			.get(tokenField.getValue(), type);
+	}
+}
+```
+
+### WebHelper
+
+WebHelper를 통해 ip주소를 가져오는 메서드를 만듭니다.
+
+```java
+public class WebHelper {
+	public static String getIpAddress(HttpServletRequest request) {
+		String ip = request.getHeader("X-Forwarded-For");
+
+		if(ip == null || ip.length() == 0) ip = request.getHeader("Proxy-Client-IP");
+		if(ip == null || ip.length() == 0) ip = request.getHeader("WL-Proxy-Client-IP");
+		if(ip == null || ip.length() == 0) ip = request.getHeader("HTTP_CLIENT_IP");
+		if(ip == null || ip.length() == 0) ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+		if(ip == null || ip.length() == 0) ip = request.getRemoteAddr();
+
+        return ip;
+	}
+}
+```
+
+## 마치면서
+
+token을 활용한 인증 방법에는 고민할 거리가 정말 많았습니다.<br/>
+access token이나 refresh token의 저장 위치부터, 그리고 front-end에서 새로고침할 경우에 새로이 발급받으면서도 만료시에는 사용자가 눈치채지 않게 하면서 구현하는 방법까지.<br/>
+구현 방법도 다양했으나 UX적으로 편리할 수록 보안은 조금씩 약해질 수 밖에 없었고, 반대로 완전한 보안또한 존재하지는 않았습니다.<br/>
+하지만 보안에 대해 계속해서 고민하고 고쳐가면서 더욱 발전하는거라 생각합니다.

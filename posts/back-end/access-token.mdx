@@ -115,7 +115,7 @@ JWT를 생성할 때는 어플리케이션의 성격에 맞게 claim값들을 �
 등록된 클레임(Registered Claim)은 Jwts객체에 setter가 존재하여 이를 통해 설정할 수 있습니다.<br/>
 만료 시간(Expiration Time) 클레임은 설정해주어서 만료 시간이 지날 경우 토큰이 폐기되도록 하는 것이 좋습니다.<br/>
 jwtUtil에서는 이들을 통해 access-token을 생성해줍니다.<br/>
-Map<String, Object> 의 형태로 body claim을 넣어줄 수 있습니다.
+HashMap을 이용해 body claim을 넣어줄 수 있습니다.
 
 ```java
 @Component
@@ -194,4 +194,4 @@ public enum PrivateClaimKey implements TokenField {
 ```
 
 원래 refresh token 발급 까지 설명하고 구현하려 하였으나 생각보다 양이 많아져서 한번 더 나누게 되었습니다.<br/>
-다음 포스터에서는 access token의 한계점과 refresh token에 대해서 설명하고 구현하도록 하겠습니다.
+[다음 포스터](/post/back-end/refresh-token)에서는 access token의 한계점과 refresh token에 대해서 설명하고 구현하도록 하겠습니다.
