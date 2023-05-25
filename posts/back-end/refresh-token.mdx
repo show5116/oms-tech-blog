@@ -175,8 +175,8 @@ refreshToken을 이용해 새로운 accessToken을 발급받을 로직을 추가
 ```java
 @RestController
 @RequiredArgsConstructor
-public class UserController {
-	private final UserService userService;
+public class SignController {
+	private final SignService signService;
 
 	@PostMapping("/auth/sign/in")
 	public ResponseEntity<SignInResponse> signIn(HttpServlet request, @RequestBody SignInRequest requestBody) {
