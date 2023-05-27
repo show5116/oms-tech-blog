@@ -1,0 +1,244 @@
+---
+title: 'JPA delete (bulk delete)'
+date: '2023-05-27'
+description: 'Spring data Jpa에서 delete를 하는 여러 가지 방법과 대량 데이터 삭제할 때 더 좋은 방법'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JPA']
+---
+
+JPA에서는 데이터를 삭제하는 방법이 여러가지 있습니다.<br/>
+논리적 삭제(UPDATE문)을 통한 방법도 있지만 해당 글은 물리적 삭제(DELETE문)에 대한 글입니다.
+
+## JpaRepository
+
+
+```java
+public interface UserRepository extends JpaRepository<User, String> {
+}
+```
+
+```java
+@Entity
+@Table(name = "users")
+@NoArgsConstructor()
+public class User {
+	@Id
+	@Column(name = "user_id")
+	private String id;
+
+	......
+}
+```
+
+JPA에서 제공하는 JpaRepository는 인터페이스를 만드는 것 만으로도 다양한 CRUD 메서드들을 제공해줍니다.<br/>
+[JpaRepository](/post/back-end/jpa-repository)참조<br/>
+그 중에서도 delete 관련된 메서드들이 존재하는데, 해당 메서드들에 대해서 먼저 알아보고 각 맞는 사용법에 대해 설명드리겠습니다.
+
+### delete
+
+`delete(T entity)`는 가장 기본적인 delete 메서드 입니다.<br/>
+매개변수로 entity를 받고 아래의 쿼리로 단일 조회를 마친 후 해당 row가 있다면 delete하고, 없다면 아무런 일이 일어나지 않습니다.
+
+```sql
+SELECT member.*
+  FROM member
+ WHERE member.id = ?
+```
+
+```java
+@Service
+@RequiredArgsConstructor
+public class MemberService {
+	private final MemberRepository repository;
+
+	@Transactional
+	public deleteOne(String id) {
+		Member member = repository.findById(id).get();
+		repository.delete(member);
+	}
+}
+```
+
+단일 데이터 삭제를 할때는 유용하게 사용됩니다.<br/>
+조회 쿼리가 나가는게 부담도 없고 사용하기도 편합니다.<br/>
+JpaRepository의 구현체인 SimpleJpaRepository에는 아래와 같이 구현되어 있습니다.
+
+```java
+// SimpleJpaRepository.java
+@Transactional
+public void delete(T entity) {
+	
+	Assert.notNull(entity, "Entity must not null!");
+	// isNew() 메서드는 엔티티의 ID 유무를 확인해 DB에 들어간 값인지 아닌지를 판단합니다.
+	if (entityInformation.isNew(entity)) {
+		return;
+	}
+
+	T existing = em.find(entityInformation.getJavaType(), entityInformation.getId(entity));
+
+	if (existing == null) {
+		return;
+	}
+	em.remove(em.contains(entity) ? entity : em.merge(entity));
+}
+```
+
+### deleteAll
+
+`deleteAll(Iterable<? extends T> entities)` 이 메서드는 위의 delete메서드를 반복하는 것과 같은 역할을 합니다.<br/>
+실제로 JpaRepository의 구현체를 보면 delete를 반복하여서 구현한 것을 확인할 수 있습니다.
+
+```java
+// SimpleJpaRepository.java
+@Transactional
+public void deleteAll(Iterable<? extends T> entities) {
+	Assert.notNull(entities, "Entities must not be null");
+
+	for (T entity : entities) {
+		delete(entity);
+	}
+}
+```
+
+결국 이 메서드도 삭제를 진행하기 전에 모든 데이터를 SELECT를 하고 DELETE를 실행하여서 데이터의 row가 많을 경우 실행시간이 오래걸릴 수 있습니다.<br/>
+매개변수를 넣지 않을경우에는 해당 Entity의 모든 데이터를 삭제합니다.
+
+```java
+// SimpleJpaRepository.java
+@Transactional
+public void deleteAll() {
+	for (T element : findAll()) {
+		delete(element);
+	}
+}
+```
+
+### deleteById
+
+`deleteById(ID id)`는 id값으로 Entity를 조회하고 있다면 삭제합니다.<br/>
+Entity가 없다면 `EmptyResultDataAccessException` 익셉션이 던져집니다.
+
+```java
+// SimpleJpaRepository.java
+@Transactional
+public void deleteById(ID id) {
+	Assert.notNull(id, ID_MUST_NOT_BE_NULL);
+
+	delete(findById(id).orElseThrow(() -> new EmptyResultDataAccessException(
+String.format("No %s entity with id %s exists!", entityInformation.getJavaType(), id), 1)));
+}
+```
+
+여기까지의 delete 메서드들을 보았을 때 모두 SELECT를 하여서 존재 유무를 확인한 후에 DELETE를 하였습니다.<br/>
+따라서 다수의 데이터를 삭제할때는 당연히 수행시간이 늦어질 수 밖에 없습니다.<br/>
+일부러 ID가 없을경우 익셉션을 내야하는 경우가 아니라면 (그런 경우가 있는지도 모르겠지만..) 단건이 아닌 데이터들에 위의 메서드들을 사용하는 것은 안좋은 방법이라 생각합니다.
+
+### deleteInBatch
+
+**주의 2022년 기준으로 해당 메서드는 <del>deprecated</del> 되었고, deleteAllInBatch(Iterable entities)로 대체되었습니다.(로직은 동일)**<br/>
+`deleteInBatch(Iterable entites)`는 위의 메서드들과는 달리 SELECT문을 사용하지 않습니다.
+
+```java
+SimpleJpaRepository.java
+@Transactional
+public void deleteInBatch(Iterable<T> entities) {
+	Assert.notNull(entities, "Entities must not be bull!");
+
+	if (!entities.iterator().hasNext()) {
+		return;
+	}
+
+	applyAndBind(getQueryString(DELETE_ALL_QUERY_STRING, entityInformation.getEntityName()), entities, em)
+		.executeUpdate();
+}
+```
+
+위의 `getQueryString` 으로 가져오는 쿼리문은 delete문입니다.
+
+```java
+// QueryUtils
+public static final String DELETE_ALL_QUERY_STRING = "delete from %s x";
+```
+
+그리고 또한 `applyAndBind`는 아래와 같이 구현되어 있습니다.
+
+```java
+public static <T> Query applyAndBind(String queryString, Iterable<T> entities, EntityManager entityManager) {
+	...
+	Iterator<T> iterator = entities.iterator();
+	...
+	StringBuilder builder = new StringBuilder(queryString);
+	builder.append(" where");
+
+int i = 0;
+	
+	while (iterator.hasNext()) {
+		iterator.next();
+
+builder.append(String.format(" %s = ?%d", alias, ++i));
+
+		if (iterator.hasNext()) {
+			builder.append(" or");
+		}
+	}
+}
+```
+
+로직에 따르면 or절을 계속해서 이어붙이면서 where 절을 완성시킵니다.<br/>
+실제 쿼리는 아래와 같이 나가게 됩니다.
+
+```sql
+DELETE FROM meber
+ WHERE member.id = ? OR member.id = ? ...
+```
+
+결과적으로 이 메서드는 단 한번의 delete 쿼리를 만들어서 삭제를 하기 때문에 위의 메서드들보다 빠르게 삭제가 가능합니다.<br/>
+하지만 이 메서드도 완벽하진 않습니다.<br/>
+그것은 바로 JPA 내부의 문제점인데, 쿼리를 생성할 때 너무 많은 or절을 생성할 경우 `StackOverFlow`익셉션이 발생하는 현상이 있습니다.<br/>
+따라서 한번의 많은 데이터를 DELETE할 때 갑작스레 에러가 발생할 수 있습니다.
+
+### deleteAllInBatch
+
+`deleteAllInBatch()`는 매개변수 없이 테이블의 모든 데이터를 삭제합니다.<br/>
+위처럼 where절을 생성하지도 않고 SELECT 절을 사용하지도 않습니다.<br/>
+하지만 실제 서비스에선 사용할 일이 거의 없을것입니다.
+
+```java
+//SimpleJpaRepository.java
+@Transactional
+public void deleteAllInBatch() {
+	em.createQuery(getDeleteAllQueryString()).executeUpdate();
+}
+```
+
+## Bulk delete 해결방법
+
+결국 가장 좋은 방법은 순정이라고, 직접 delete 쿼리를 작성하는 방법입니다.
+
+```java
+pulibc interface MemberRepository extends Repository<Member, String> {
+	@Modifyung(clearAutomatically = true, flushAutomatically = true)
+	@Query("delete from Member m where m.id in :ids")
+	void deleteAllByIds(@Param("ids") Iterable<String> ids);
+}
+```
+
+위와 같이 in절을 이용해 커스텀 쿼리문을 작성하면 빠른 성능으로 삭제를 할 수 있습니다.
+
+### @Modifying
+
+위와 같은 벌크 연산을 실행하게 될 시에는 영속성 컨텍스트를 무시하고 쿼리가 실행됩니다.<br/>
+따라서 이미 제거된 엔티티를 조회할 가능성이 생길 수 도 있는데 `@Modifying` 어노테이션은 DB와 데이터 싱크를 맞춰주는 역할을 합니다.<br/>
+`@Modifying` 어노테이션은 JPA Entity의 Life Cycle을 무시하고 쿼리가 실행됩니다.<br/>
+그래서 영속성 관리를 위한 clearAutomatically 속성과 flushAutomatically 속성이 있습니다.
+
+-	clearAutomatically
+
+	이 속성은 쿼리 메서드 실행 후, 영속성 컨텍스트를 clear해주는 속성입니다.<br/>
+	이 속성을 true로 하면 삭제된 Entity를 조회할 일이 사라지게 됩니다.
+
+-	flushAutomatically
+
+	이 속성은 쿼리를 실행하기 전, 영속성 컨텍스트의 변경사항을 DB에 lush할 것인지 결정하는 속성입니다.<br/>
+	default는 false이나, Hibernate의 FlushModeType이 default로 AUTO값이기에 따로 설정하지 않으면 flushAutomatically가 false이든 true이든 항상 쿼리 실행 전에 flush가 나가게 됩니다.
