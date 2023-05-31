@@ -1,0 +1,139 @@
+---
+title: 'JPA의 Auditing 기능 INSERT, UPDATE시 시간 저장하기'
+date: '2023-05-31'
+description: 'JPA의 Auditing과 MappedSuperclass를 이용하여 INSERT와 UPDATE시 시간과 저장한 사람의 정보를 담습니다.'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JPA']
+---
+
+JPA에서는 Audit기능을 제공해줍니다.<br/>
+Audit은 감시하다 라는 뜻으로, 이 기능을 활용하면 생성일, 수정일, 생성한 사람, 수정한 사람의 정보를 남길 수 있습니다.<br/>
+
+## @MappedSuperclass
+
+![mappedSuperclass size:800*400](/back-end/mapped-superclass.png)
+`@MappedSuperclass` 어노테이션은 부모클래스에 선언하여서 상속받는 Entity들은 모두 상속받은 컬럼을 가지게 해줍니다.<br/>
+이 어노테이션을 사용한 클래스는 `엔티티`가 아니고, 상속관계 매핑이 아닙니다.<br/>
+위의 이미지와 같이 BaseEntity란 부모클래스가 id와 name이란 컬럼을 가지고 있다면, Member와 Seller Entity는 이를 상속받아 두개의 컬럼을 가지게 됩니다.
+
+```java
+@MappedSuperclass
+@Getter
+public abstract class BaseEntity {
+	@Column(name = "create_user", columnDefinition = "varchar2(50)", nullable = false, updatable = false)
+	private String createUser;
+
+	@Column(name = "change_user", columnDefinition = "varchar2(50)", nullable = false)
+	private String modifyUser;
+
+	@Column(name = "create_time", columnDefinition = "date", nullable = false, updateable = false)
+	private LocalDateTime createDateTime;
+
+	@Column(name = "change_time", columnDefinition = "date", nullable = false)
+	private LocalDateTime modifyDateTime;
+
+}
+```
+
+위에는 createUser, modifyUser, createDateTime, modifyDateTime 4개의 컬럼을 가진 추상클래스를 만들었습니다.<br/>
+
+```java
+@Entity
+@Table(name = "users")
+public class User extends BaseEntity {
+    ......
+}
+```
+
+이런방식으로 해당 4개의 컬럼이 필요한 Entity에서 BaseEntity를 상속받으면 4개의 컬럼을 가지게 됩니다.<br/>
+대부분의 Entity는 생성시간과 수정시간을 저장해두면 좋으니 상속받아 구현하면 좋습니다.
+
+## Audit 사용하기
+
+`@MappedSuperclass`을 이용해 추상클래스를 구현하였다면, 이젠 Audit 기능을 사용하여서 INSERT, UPDATE시에 저 컬럼들에 값을 자동으로 넣도록 할 수 있습니다.
+
+### Config
+
+Audit을 위한 Configuration 파일을 생성해줍니다.<br/>
+`@EnableJpaAuditing`어노테이션은 사용한 어플리케이션에 JPA Audit 기능을 제공해주게 되는 어노테이션입니다.<br/>
+메인 어플리케이션 클래스에서 사용하여도 상관없지만, Test코드를 이용할 때와 또한 정확하게 기능을 구분하기 위해 따로 사용하는 것이 좋습니다.
+
+```java
+@Configuration
+@EnableJpaAuditing
+public class AuditingConfig implements AuditorAware<String> {
+
+	@Override
+	public Optional<String> getCurrentAuditor() {
+		HttpServletRequest currentRequest = WebHelper.getCurrentRequest();
+        String memberId = currentRequest.getHeader("member-id");
+        memberId = memberId.isEmpty() ? "System" : memberId;
+		return Optional.of(memberId);
+	}
+}
+```
+
+```java
+public class WebHelper {
+	public static HttpServletRequest getCurrentRequeset() {
+		return ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+	}
+}
+```
+
+`AuditorAware`을 implements하면 `getCurrentAuditor` 메서드를 구현하게 됩니다.<br/>
+해당 클래스는 추후에 createUser와 modifyUser에 들어가게 될 값을 정해줍니다.<br/>
+현재 HttpServletRequest를 가져오고, RequestHeader를 통해 member-id를 넣어줍니다.<br/>
+혹여 member-id가 없는 상황(Spring 스케쥴러를 통한 상황, 혹은 회원 가입 등..)에선 System이란 아이디를 넣어줍니다.
+
+### 추상클래스 변경
+
+앞에서 만들었던 추상클래스를 변경해주도록 하겠습니다.<br/>
+`@EntityListeners` 어노테이션은 JPA Entity에서 이벤트가 발생할 때마다 특정 로직을 실행시킬 수 있게 해주는 어노테이션입니다.<br/>
+AuditingEntityListener.class의 값을 주면 @PrePersist로 Audit 기능을 수행하게 해줍니다.
+
+```java
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+@Getter
+public abstract class Auditalbe {
+	@CreatedBy
+	@Column(name = "create_user", columnDefinition = "varchar2(50)", nullable = false, updatable = false)
+	protected String createUser;
+
+	@LastModifiedBy
+	@Column(name = "change_user", columnDefinition = "varchar2(50)", nullable = false)
+	protected String modifyUser;
+
+	@CreatedDate
+	@Column(name = "create_time", columnDefinition = "date", nullable = false, updateable = false)
+	protected LocalDateTime createDateTime;
+
+	@LastModifiedDate
+	@Column(name = "change_time", columnDefinition = "date", nullable = false)
+	protected LocalDateTime modifyDateTime;
+
+}
+```
+
+-   @CreatedDate
+
+Entity가 INSERT될 때 생성 시간을 넣어줍니다.<br/>
+JPA에서 제공하는 `@CreateDate` 말고 Hibernate에서 제공하는 `@CreationTimestamp`이란 어노테이션도 존재합니다.<br/>
+둘의 차이점은 `@CreateDate`는 위에서 한 것과 같이 `@EnableJpaAuditing`과 `@EntityListeners`를 필요로 합니다.<br/>
+반면에 `@CreationTimestamp`는 그러한 설정없이 동작이 가능합니다.<br/>
+그 이유는 JPA는 JPA 고유 메모리 공간(context)을 이용해 Entity 객체들을 관리하는데 관리되는 객체들이 변경되면 데이터에 반영하는 형식이라 변화를 감지해야 하기 때문입니다.
+
+-   @LastModifiedDate
+Entity가 UPDATE될 때 수정 시간을 넣어줍니다.<br/>
+마찬가지로 Hibernate에서 제공하는 `@UpdateTimestamp`이란 어노테이션이 존재해서 대신 사용해도 됩니다.
+
+-   @CreatedBy
+
+Entity가 INSERT될 때 `getCurrentAuditor`메서드를 통해 얻어온 값을 넣어줍니다.
+
+
+-   @LastModifiedBy
+
+마찬가지로 Entity가 UPDATE될 때 `getCurrentAuditor`메서드를 통해 얻어온 값을 넣어줍니다.
