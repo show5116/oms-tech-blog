@@ -21,7 +21,7 @@ public interface UserRepository extends JpaRepository<User, String> {
 ```java
 @Entity
 @Table(name = "users")
-@NoArgsConstructor()
+@NoArgsConstructor(acessLevel = Accesslevel.PRIVATE)
 public class User {
 	@Id
 	@Column(name = "user_id")
