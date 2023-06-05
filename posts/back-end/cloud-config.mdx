@@ -1,6 +1,6 @@
 ---
 title: 'Spring Cloud Config'
-date: '2023-06-'03
+date: '2023-06-03'
 description: 'Spring Cloud Config를 이용하여 중앙에서 설정파일을 관리해보자.'
 authorId: 'show5116'
 authorName: '유영진'
@@ -56,7 +56,7 @@ spring:
 `spring.cloud.config.server.native.search-locations` 속성은 설정파일들을 가져올 위치를 정할 수 있습니다.<br/>
 classpath를 이용해 현재 서비스의 `/src/main/resources/`로 부터 설정파일을 가져올 수 있습니다.
 
-이미지 추가
+![config-directory](/back-end/config-directory.png)
 
 위처럼 configs 폴더로부터 설정파일을 가져오게 됩니다.
 
@@ -105,18 +105,18 @@ spring:
 
 저장소로부터 yml파일을 가져오는 요소는 총 3가지가 있습니다.
 
--	{application} `spring.application.name`에 매핑됩니다.
--	{profile} `spring.profiles.active`에 매핑됩니다. (쉼표로 구분)
--	{label} git의 경우 branch로 매핑됩니다.
+-	`{application}` `spring.application.name`에 매핑됩니다.
+-	`{profile}` `spring.profiles.active`에 매핑됩니다. (쉼표로 구분)
+-	`{label}` git의 경우 branch로 매핑됩니다.
 
 위의 yml파일과 같이 설정하였을 경우 우선 순위를 가지고 속성이 적용됩니다.
 
-1.	config server {application}-{profile}.yml
-2.	config server {application}.yml
-3.	config server application-{profile}.yml
-4.	각 프로젝트 application-{profile}.yml
-5.	config server application.yml
-6.	각 프로젝트 application.yml
+1.	config server `{application}-{profile}.yml`
+2.	config server `{application}.yml`
+3.	config server `application-{profile}.yml`
+4.	각 프로젝트 `application-{profile}.yml`
+5.	config server `application.yml`
+6.	각 프로젝트 `application.yml`
 
 만약 profile이 여러개일 경우 쉼표(,)를 기준으로 앞의 profile을 우선으로 적용합니다.<br/>
 실제로는 위의 우선순위의 반대로 yml파일을 불러오며, 만약 먼저 불러온 속성과 겹치는 속성이 뒤에 있을 경우 그 값을 덮어 쓰면서 기존의 값은 사라지게 됩니다.
