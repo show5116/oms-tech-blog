@@ -1,0 +1,256 @@
+---
+title: 'Builder 패턴 사용하기'
+date: '2023-06-08'
+description: '객체를 생성자가 아닌 Builder패턴으로 생성하기'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['Spring']
+---
+
+객체를 생성하는 방법에는 생성자 패턴, 메소드 패턴 등등이 있는데, 그 중에 빌더 패턴이 있습니다.
+
+## Builder패턴 만들기
+
+Lombok을 사용할 경우 빌더 패턴을 만들어서 사용하기 매우 편해집니다.<br/>
+하지만 그 이전에 Lombok없이 빌더 패턴의 구조를 만들어보도록 하겠습니다.
+
+```java
+public class User {
+	private string id;
+	private String password;
+
+	User(String id, String password) {
+		this.id = id;
+		this.password = password;
+	}
+
+	public static User.UserBuilder builder() {
+		return new User.UserBuilder();
+    }
+
+    public static class UserBuilder {
+        private String id;
+        private String password;
+
+        public UserBuilder () { } //NoArgsConstructor
+
+        public User.UserBuilder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public User.UserBuilder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public User build() {
+            return new User(this.id, this.password);
+        }
+    }
+}
+```
+
+위의 구조를 보면 User클래스와 그 내부 static 객체인 UserBuilder클래스를 생성하였습니다.<br/>
+User 클래스에서는 빌더 클래스에서 사용될 생성자가 하나 필요합니다.<br/>
+그리고 빌더클래스를 생성해주는 static builder 메서드를 만듭니다.<br/>
+빌더 클래스에선 기본 생성자 하나와 자기 자신을 return 하는 필드를 채우는 메서드들을 만듭니다.<br/>
+마지막으로는 User 클래스의 생성자를 이용해 자신의 필드들로 객체를 생성합니다.
+
+```java
+User user = User.builder()
+		.id("홍길동")
+		.password("1234").build();
+```
+
+빌더 패턴을 완성하였다면 위의 예시와 같이 객체를 생성할 수 있게 됩니다.<br/>
+위의 코드들을 Lombok을 사용하면 단 하나의 어노테이션으로 만들 수 있습니다.
+
+```java
+@Builder
+public class User {
+	private String id;
+	private String password;
+}
+```
+
+위의 class에 `@Builder` 어노테이션을 이용하면 위와 완전히 동일한 코드가 됩니다.<br/>
+또한 `@Builder` 어노테이션은 생성자에다가도 사용하여 특정 필드들만을 대상으로 구현할 수 있습니다.
+
+```java
+public class User {
+	private String id;
+	private String password;
+	private String name;
+
+	@Builder
+	User (String password, String name) {
+		this.password = password;
+		this.name = name;
+	}
+}
+```
+
+Lombok은 매우 강력하지만, 모르고 쓰면 독이 된다 생각합니다.<br/>
+잘 알고 적용하는 것이 중요한데 그 이유를 설명하겠습니다.
+
+### @Builder의 기능
+
+`@Builder` 어노테이션은 빌더 클래스를 만들고 메서드를 제공해주는 기능만 있지 않습니다.<br/>
+Builder 어노테이션의 설명을 보면 아래와 같이 나와있습니다.
+
+![builder size:600*150](/back-end/builder.png)
+
+해석하면 클래스에 `@Build` 어노테이션을 사용할 경우 모든 필드를 인수로 사용하는 생성자를 제공해줍니다.(`@AllArgsConstructor(access = AccessLevel.PRIVATE)`)<br/>
+하지만 항상 제공하는 것이 아니라 생성자를 하나도 작성하지 않고, `@XArgsConstructor` 주석이 없을 경우 에만 제공해줍니다.<br/>
+만약 생성자가 있다면 Lombok은 모든 필드를 인수로 사용하는 생성자가 있다고 가정하고 코드를 생성하게 됩니다.<br/><br/>
+즉 해석에 따르면 아무런 생성자 없이 `@Build`어노테이션 하나만 사용하거나, 그렇지 않은 경우에는 반드시 `@AllArgsConstructor`와 함께 이용해야 합니다.
+
+### 생성자의 접근 단계
+
+빌더 패턴을 사용할 때 생성자의 접근 단계또한 중요합니다.
+
+-	기본생성자는 protected
+
+`@NoArgsConstructor(access = AccessLevel.PROTECTED)`를 이용하여 기본성생자를 protected하게 합니다.<br/>
+그 이유는 무분별한 객체 생성을 막는 것인데 서비스에서 기본생성자를 통해 객체를 만들고 setter로 필드를 채울 경우에 완전하지 않은 객체가 될 가능성이 크기 때문입니다.
+
+-	@Build 기반 생성자는 private
+
+빌더 패턴을 사용할 객체는 `build()`를 통해서만 객체 생성을 제공하는 것이 좋습니다.<br/>
+또한 `@AllArgsConstructor`로 인해 변하기 쉬운 코드를 방지할 수 있습니다.<br/>
+따라서 아래와 같이 사용하는게 좋습니다.
+
+```java
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder
+public class User {
+	private String id;
+	private String password;
+	private String name;
+
+	// 따로 생성자를 사용할 경우
+	@Builder
+	protected User (String password, String name) {
+		this.password = password;
+		this.name = name;
+	}
+}
+```
+
+## 사용하는 이유 (ResponseEntity)
+
+Rest API 컨트롤러에서는 응답을 만들 때 ResponseEntity를 사용합니다.<br/>
+이 객체의 경우에는 생성자 패턴, 메서드 패턴, 빌더 패턴 모두 사용이 가능한데, 이 객체를 통해 예시를 들어보겠습니다.
+
+```java
+// 생성자 패턴 사용 1
+return new ResponseEntity<TestDto>(testDto, HttpStatus.OK);
+// 생성자 패턴 사용 2 (header 추가)
+HttpHeaders httpHeaders = newHttpHeaders();
+httpHeaders.add("token", "test");
+return new ResponseEntity<TestDto>(testDto, httpHeaders, HttpStatus.OK);
+// 생성자 패턴 사용 3 (상태코드만 보내줄 경우
+return new ResponseEntity(HttpStatus.OK);
+```
+
+생성자 패턴을 이용한 구현입니다.<br/>
+코드를 보았을 때 코드의 직관성이 떨어지고, 코드를 확장할 외부의 라이브러리를 사용할 경우 생성자의 모양을 알아야만 사용할 수 있습니다.
+
+```java
+// 메서드 패턴 사용 1
+return ResponseEntity.ok(testDto);
+// 메서드 패턴 사용 2 (header 추가)
+ResponseEntity<TestDto> response = ResponseEntity.ok(testDto);
+response.getHeaders().add("token", "test");
+return response;
+// 메서드 패턴 사용 3 (상태코드만 보내줄 경우)
+return Response.ok(null);
+```
+메서드 패턴을 이용한 구현입니다.<br/>
+메서드 패턴은 간단한 기능만 수행할 경우에는 거기에 맞는 코드를 작성하여 코드가 간결해지나, 코드를 확장할 경우 코드가 복잡해지거나 알맞는 메서드를 찾아야 합니다.
+
+```java
+// 빌더 패턴 사용 1
+return Response.ok().body(testDto);
+// 빌더 패턴 사용 2 (header 추가)
+return ResponseEntity.ok()
+	.header("token", "test")
+	.body(testDto);
+// 빌더 패턴 사용 3 (상태코드만 보내줄 경우)
+return ResponseEntity.ok().build();
+```
+
+빌더 패턴을 이용한 구현입니다.<br/>
+필드명만 알면 코드에 일관성이 유지되고 유지보수가 쉬워집니다.<br/><br/>
+위의 각 3가지 예시는 완전히 동일한 동작을 하는 코드입니다.<br/>
+상황에 따른 장단점은 있겠지만 확장을 할 경우에는 builder 패턴을 유용하게 사용할 수 있습니다.<br/>
+또한 코드를 한눈에 알아보기 쉽게 되어서 분석이 쉬워집니다.<br/>
+그리고 이 차이는 DTO같은 객체들을 직접 다룰 때 더 크게 나타납니다.
+
+## 필드 기본값 주기
+
+Lombok에는 `@Builder.Default`가 있습니다.<br/>
+이를 활용해 쉽게 필드의 기본값을 줄 수 있습니다.
+
+```java
+@Builder
+public class User {
+    private String id;
+    private String name;
+    @Builder.Default
+    private String nation = "Korea";
+
+}
+```
+
+하지만 이 방식은 class에 어노테이션을 붙일 경우에만 사용이 가능합니다.<br/>
+생성자에 `@Builder` 어노테이션을 사용할 경우에는 기본값이 들어가지 않습니다.<br/>
+따라서 아래와 같이 구현함으로서 기본값을 줄 수 있습니다.
+
+```java
+public class User {
+    private String id;
+    private String name;
+    private String nation;
+
+    @Builder
+    private User (String id, String name) {
+        this.id = id;
+        this.name = name;
+        this.nation = "Korea"; // 초기값을 줄 수 있습니다.
+    }
+
+}
+```
+
+생성자에서 직접 값을 초기화 함으로서 기본값을 줄 수 있게 됩니다.
+
+## 필수 파라미터 확인하기
+
+또한 생성자를 이용하여서 필수로 들어가야할 파라미터가 존재하는지 확인할 수 있습니다.
+
+```java
+public class User {
+    private String id;
+    private String password;
+    private String name;
+
+    @Builder
+    private User(String id, String password, String name) {
+        Assert.notNull(id, "id must not be null");
+        this.id = id;
+        this.password = password;
+        this.name = name;
+    }
+}
+```
+
+## 마치며
+
+Builder 패턴은 필드 수가 많을수록 큰 강점을 가지고 있습니다.<br/>
+실수를 줄여주고 확실한 객체를 만들기 쉽습니다.<br/>
+하지만 Builder 패턴 자체를 구현하기 위해서 들어가는 코드의 양이 많아지고,
+또한 생성자 방식처럼 아예 필수 필드들을 처음부터 받을 수 있지 않아서 그에 따른 단점 또한 존재합니다.<br/>
+장,단점을 파악하고 사용하였을 때 빌더 패턴의 강점을 이용할 수 있다 생각합니다.
