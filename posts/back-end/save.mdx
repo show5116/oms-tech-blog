@@ -1,0 +1,208 @@
+---
+title: 'JPA의 save 메서드 동작과정과 SELECT 없이 INSERT하기'
+date: '2023-06-09'
+description: 'JPA Repository에서 save 메서드가 INSERT, UPDATE를 결정하는 방법과, SELECT없이 INSERT하는 방법'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JPA']
+---
+
+JPA Repository에는 save메서드가 있습니다.<br/>
+이는 어쩔때는 INSERT문을 사용하고, 어쩔때는 UPDATE문을 사용합니다.<br/>
+이를 결정해주는건 `isNew`메서드를 사용하여서 해당 Entity가 새로 생긴건지 기존의 것인지를 구분합니다.
+
+## SimpleJpaRepository 구현체
+
+```java
+// SimpleJpaRepository.java
+@Transactional
+public <S extends T> S save(S entity) {
+	if (entityInformation.isNew(entity)) {
+		em.persist(entity);
+		return entity;
+	} else {
+		return em.merge(entity);
+	}
+}
+```
+
+위는 JPA Repository의 구현체인 SimpleJpaRepository에서 save메서드의 구현입니다.<br/>
+`isNew`메서드로 Entity가 새롭게 만들어진 것인지, 기존의 것인지를 구분하고 새로운것이면 `persist`를 아니면 `merge`를 수행합니다.
+
+### isNew
+
+```java
+// AbstractEntityInformation.java
+public boolean isNew(T entity) {
+	ID id = getId(entity);
+	Class<ID> idType = getIdType();
+
+	if (!idType.isPrimitive()) {
+		return id == null;
+	}
+
+	if (id instanceof Number) {
+		return ((Number) id).longValue() == 0L;
+	}
+
+	throw new IlleaglArgumentException(String.format("Unsupported primitive id type %s!", idType));
+}
+```
+
+위는 AbstractEntityInformation에서의 `isNew`메서드 구현체 입니다.<br/>
+ID의 타입이 기본 타입일 경우 0일 때, 참조 타입일 경우 null인 경우에 true를 반환합니다.<br/>
+이는 `@GeneratedValue`에 맞춰서 구현되어 있기 때문인데, 해당 어노테이션을 사용할 경우에는 INSERT시에 id값을 주지 않기 때문입니다.<br/>
+사실상 `@GeneratedValue`를 사용하지 않는 Entity면 false를 리턴하게 됩니다.
+
+### persist vs merge
+
+-	persist
+
+	`persist`는 최초로 새엇ㅇ된 Entity를 영속화 합니다.<br/>
+	flush메서드가 호출될 때 `INSERT`문을 사용하게 됩니다.
+
+-	merge
+
+	`merge`는 `detached`상태의 Entity를 다시 영속화 합니다.<br/>
+	`detached`란 한번이라도 영속화가 되었지만 현재는 영속화가 되어있지 않은 상태 입니다.<br/>
+	다시 영속화 하는 과정에서 id값을 통해 `SELECT`문으로 값을 확인하게 됩니다.<br/>
+	flush메서드가 호출될 때 `SELECT`의 결과가 있다면 `UPDATE`를 없다면 `INSERT`를 사용합니다.
+
+여기서 주의해야할 점은 `merge`입니다.<br/>
+`save`의 구현체를 보면 `persist`의 경우에는 기존의 Entity를 return하지만, `merge`의 경우에는 새로운 Entity를 return 합니다.
+
+```java
+@Transactional
+public void test() {
+	User user = User.builder()
+			.id("id")
+			.name("이름")
+			.build();
+
+	User insertUser = userRepository.save(user); // INSERT
+	System.out.println(user == insertUser); // false
+
+	insertUser.updateName("새로운 이름");
+	User updateUser = userRepository.save(insertUser); // UPDATE
+	System.out.println(insertUser == updateUser); // false
+}
+```
+
+위의 테스트 코드를 동작하면 insertUser와 user도 서로 다르고, updateUser도 서로다른 Entity인 것을 확인할 수 있습니다.<br/>
+이 때 이전에 있던 Entity들은 더이상 영속성 관리 대상이 아니게 됩니다.<br/>
+그에 따른 dirtyCheck도 수행하지 않게 됩니다.
+
+```java
+@Transactional
+public void test() {
+	User user = User.builder()
+			.id("id")
+			.name("이름")
+			.build();
+
+	User insertUser = userRepository.save(user); // INSERT
+
+	insertUser.updateName("새로운 이름");
+	User updateUser = userRepository.save(insertUser); // UPDATE
+
+	insertUser.updateName("또다른이름"); // dirtyCheck로 인한 UPDATE가 발생하지 않음.
+	// updateUser.updateName("또다른이름"); 으로 하면 UPDATE가 제대로 발생함.
+}
+```
+
+또다른 테스트 코드를 실행해보면 insertUser의 name을 변경하여도 dirtyCheck로 인한 UPDATE문이 발생하지 않는 것을 확인할 수 있습니다.<br/>
+따라서 `save`이후에 어떠한 로직을 수행할 경우 반드시 return 값을 새로이 받아서 사용하는 것이 좋습니다.<br/>
+만약에 `@GeneratedValue`를 사용한다면 결과가 달라질 수 있습니다.
+
+```java
+@Entity
+@Builder
+public class Board {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private id;
+
+	private String content;
+}
+````
+
+```java
+@Transactional
+public void test() {
+	Board board = Board.builder()
+				.content("내용").build();
+
+	Board insertBoard = boardRepository.save(board);
+	System.out.println(board == insertBoard); // true
+	board.updateContent("새로운 내용"); // dirtyCheck로인한 UPDATE가 발생함
+}
+```
+
+위의 테스트 코드에선 `persist`로 인해 같은 엔티티를 return하였고, 그 결과로 dirtyCheck가 수행된것을 확인할 수 있습니다.
+
+## SELECT 없이 INSERT 하기(Persistable 구현)
+
+한개나 두개의 row를 INSERT하는 경우라면 SELECT문이 발생해도 큰 지장이 없습니다.<br/>
+하지만 만약 1000개의 row를 INSERT하게 된다면 1000번의 SELECT문이 발생할 것이고, 이는 성능적으로 장애를 일으킬 수 있습니다.<br/>
+JPA에서는 이를 방지하기 위해 `isNew`메서드를 오버라이드 해와 직접 구현할 수 있습니다.
+
+```java
+public class User implements Persistable<String> {
+	@Id
+	private String id;
+
+	@Override
+	public String getId() {
+		return id;
+	}
+
+	@Override
+	boolean isNew() {
+		return false;
+	}
+}
+```
+
+### Auditing 활용
+
+지난번의 [Auditing 포스트](/post/back-end/auditing)의 Auditing기능을 활용할 수 있습니다.<br/>
+`@CreatedDate`는 entity가 INSERT될 때 자동적으로 입력이 됩니다.<br/>
+이를 이용하여서 필드값이 null일 경우에 isNew가 false임을 return하면 됩니다.
+
+```java
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+@Getter
+public abstract class Auditalbe {
+    ......
+	@CreatedDate
+	@Column(name = "create_time", columnDefinition = "date", nullable = false, updateable = false)
+	protected LocalDateTime createDateTime;
+    ......
+}
+```
+
+```java
+public class User extends Auditable implements Persistable<String> {
+	@Id
+	private String id;
+
+	@Override
+	public String getId() {
+		return id;
+	}
+
+	@Override
+	boolean isNew() {
+		return createDateTime = null;
+	}
+}
+```
+
+이렇게 구현할 경우 createDateTime이 null일 경우 SELECT문 없이 INSERT를 사용합니다.
+
+## 마치며
+
+JPA Repository의 save메서드를 분석하여 보았습니다.<br/>
+save 메서드를 통하여서 UPDATE를 할 경우, null인 데이터들은 그대로 null로 update가 될 수 있습니다.<br/>
+다음번에는 이를 방지하기 위한 방법과 dirtyCheck로 인한 UPDATE를 알아보겠습니다.
