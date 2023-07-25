@@ -1,0 +1,98 @@
+---
+title: 'JPA의 더티체킹(Dirty Checking)과 Update'
+date: '2023-07-25'
+description: 'JPA에서 업데이트를 하는 방법과 더티체킹의 의미'
+authorId: 'show5116'
+authorName: '유영진'
+tags: ['JPA']
+---
+
+## 더티 체킹
+
+더티 체킹(Dirty Checking)이란 상태 변경을 감지한다는 의미입니다.<br/>
+JPA에서 엔티티를 다룰 때 한 엔티티의 변경이 일어나면, 그 변경을 감지하여서 자동으로 Update를 데이터베이스에 반영하여 줍니다.<br/>
+JPA Repository에는 Update를 위한 메서드가 따로 존재하지 않는데, 이는 더티 체킹을 통해 업데이트를 하는것이 일반적이기 때문입니다.
+
+-	더티 체킹 범위
+
+더티 체킹은 한 Transaction 내부에서만 이뤄지는데, Transaction은 `EntityManager`를 이용해 Transaction을 생성하여 이용하거나, JPA Data에서는 `@Transactional` 어노테이션을 이용해 생성합니다.<br/>
+영속성 컨텍스트는 Entity를 보관할 때 최초의 상태를 저장하는데 이를 스냅샷이라고 합니다.<br/>
+영속성 컨텍스트가 Flush되는 시점에 스냅샷과 현재의 엔티티를 비교해 상태가 달라진 Entity를 찾아 Update 쿼리를 생성하여 줍니다.<br/>
+영속성 컨텍스트가 Flush 되는 시점은 1. `Transaction commit` 2. `EntityManager flush` 3. `@Modify(flushAutomatically = true)`가 있습니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class DirtyCheckService {
+	private final EntityManagerFactory entityManagerFactory;
+
+public void dirtyCheckEntityManager(Long id, String nickName) {
+	EntityManager em = entityManagerFactory.createEntityManager();
+	EntityTransaction transaction = em.getTransaction();
+	transaction.begin(); // 트랜잭션 시작
+	User user = em.find(User.class, id);
+	user.changeNickName(nickName); // 엔티티 변경
+	transaction.commit();
+}
+}
+```
+
+위의 예시는 EntityNabager를 이용해 transaction을 생성하고 그 안에서 Entity를 조회하고, 그 값을 변경하였습니다.<br/>
+Transaction내에서 User 엔티티가 조회된 순간에 EntityManager가 관리를 시작하고, 해당 엔티티의 변경을 감지하고, `transaction.commit();` 으로 감지된 변경사항을 Update문을 통해 변경합니다.<br/>
+직접 Update문과 관련된 메서드나 쿼리를 작성하지 않아도 자동으로 Update가 이뤄집니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class DirtyCheckService {
+	private final UserRepository userRepository;
+
+	@Transactional
+	public void dirtyCheckTransactional(Long id, String nickName) {
+		User user = UserRepository.findById(id).get();
+		user.changeNickName(nickName);
+	}
+}
+```
+
+JPA Data에서는 `@Transactional` 어노테이션을 통해 자동으로 트랜잭션 관리를 합니다.<br/>
+해당 메서드 안에서 User엔티티를 조회하고, 그 순간 EntityManager에서 엔티티를 관리합니다.<br/>
+이후 메서드가 끝날 때 변경을 감지하고 Update 쿼리를 사용합니다.<br/>
+당연히도 위의 코드에서 `@Transactional 어노테이션을 제외하면 엔티티의 nickName값은 변하지만 DB에는 영향을 주지 않습니다.
+
+-	더티 체킹 대상
+
+더티 체킹은 모든 엔티티를 대상으로 하진 않습니다.<br/>
+영속성 컨텍스트가 관리하는 엔티티들만 대상으로 더티 체킹을 하는데, `detach`된 엔티티(준영속)나 DBㅔ 반영되기 전 새로운 엔티티(비영속)를 대상으로는 더티 체킹을 하지 않습니다.
+
+```java
+@Service
+@RequiredArgsConstructor
+public class DirtyCheckService{
+	private final UserRepository userRepository;
+
+	@Transactional
+	public void dirtyCheckTest(Long id, Long id2, String nickName) {
+		User user = userRepository.findById(id).get(); // 조회를 통해 영속된 Entity
+		User user2 = User.builder().nickName(nickName); // 비영속 상태인 새로운 Entity
+		user2.changeNickName(nickName + "11"); // Dirty Check를 수행하지 않아 변경점이 DB에 저장되지 않음
+		User user3 = userRepository.findById(id2);
+		User user4 = userRepository.save(user3); // save를 통해 eturn 받는 Entity는 영속이 됨. 반대로 기존의 Entity는 detach 상태가 됨.
+        user3.changeNickName(nickName + "22"); // 준영속상태이기에 Dirty Check를 수행하지 않음
+        user4.changeNickName(nickName + "33"); // 영속 상태이기 때문에 Dirty Check를 수행하여 Update문 생성
+	}
+}
+```
+
+## 더티 체킹 vs JPQL
+
+많은 수의 row를 Update해야할 때는 더티 체킹보다 벌크 연산용으로 쿼리를 사용하는 것이 좋습니다.<br/>
+더티 체킹을 활용할 경우, 한 Row마다 Update문이 나가기 때문인데 이를 활용하여 빠른 속도로 Update를 마칠 수 있습니다.
+
+```java
+public interface UserRepository extends JpaRepository<User, Long> {
+	@Modifying(clearAutomatically = true, flushAutomatically = true)
+	@Query("update User u set u.age = u.age + 1 where u.id in :ids")
+	void updateAgePlus(@Param("ids") List<Long> ids);
+}
+```
